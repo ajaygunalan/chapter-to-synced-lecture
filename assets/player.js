@@ -192,7 +192,7 @@ function createSyncedPlayer(o) {
     askCard = document.createElement('div');
     askCard.className = 'ask';
     askCard.hidden = true;
-    (o.slide || o.mount.parentNode).appendChild(askCard);
+    (o.slide || o.mount).appendChild(askCard);   // on the slide, or beside the transport
   }
   function openAsk(q) {
     askOpen = q;
