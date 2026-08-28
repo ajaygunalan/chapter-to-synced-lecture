@@ -43,7 +43,7 @@ strategies under them. Read it before anything else.
                                      ▼
  ┌─────────────────────────────────────────────────────────────────────────┐
  │ 4  SCRIPT          script.md                                            │
- │    the author's voice, first person; beat ↔ frame; questions + replies  │
+ │    the author's voice, first person; beat ↔ frame; asks where it stops  │
  │    lint.py   ─▶ mechanical: parts↔tabs, beat order, spoken forms,       │
  │                 outline coverage, duplicate ids            (a script)   │
  │    REVIEW    ─▶ fresh agent, given teaching.md + chapter + plan + script:│
@@ -54,8 +54,8 @@ strategies under them. Read it before anything else.
                                      ▼
  ┌─────────────────────────────────────────────────────────────────────────┐
  │ 5  AUDIO — once    build_audio.py ─▶ ElevenLabs (thomas)                │
- │    audio/<part>.mp3 + audio/<part>.<q>.<A>.mp3   one clip per answer    │
- │    word timings ─▶ cues/<part>.json  (beats, questions, subtitles)      │
+ │    audio/<part>.mp3                              one file per part      │
+ │    word timings ─▶ cues/<part>.json  (beats, asks, subtitles)           │
  │                 ─▶ cues/cues.js      what the page loads                │
  └───────────────────────────────────┬─────────────────────────────────────┘
                                      ▼
@@ -122,7 +122,7 @@ and why; the author's voice. Then build from it.
 
 `references/slides.md` chooses each stretch's treatment;
 `references/sync-architecture.md` is the page contract (frames, beats,
-questions, player).
+asks, player).
 
 **Look first.** Load the `frontend-design` skill (Skill tool) and commit
 to one look for this chapter before writing markup — one that belongs to
