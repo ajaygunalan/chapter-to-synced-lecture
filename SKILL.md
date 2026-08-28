@@ -130,7 +130,7 @@ the book, its era, its subject, its author's temperament, not the previous
 lecture's. Typography, palette, texture, and the drawing style follow from
 it. What holds it together: the player's tokens (`--bg --panel --ink
 --muted --rule --shade --accent --good --bad --mark`) are what you restyle,
-so light and dark both work; the transport, seek bar, question card, and
+so light and dark both work; the transport, seek bar, ask card, and
 caption keep their classes; the slide still carries the state
 (`teaching.md`, principle 4). Fonts via Google Fonts with real fallbacks;
 everything else inline. Distinctive, not decorated. The header is the
@@ -208,7 +208,7 @@ end of the run.
 ├── plan.md               your notes
 ├── lecture.src.html      authored source
 ├── lecture.html          built; self-contained; works without audio
-├── script.md             author profile, glossary, outline, narration, questions
+├── script.md             author profile, glossary, outline, narration, asks
 ├── audio/                one mp3 per part
 ├── cues/                 per-part cues + alignment + subtitles; cues.js
 ├── shots/                screenshots from step 3
