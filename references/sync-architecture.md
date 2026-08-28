@@ -118,6 +118,12 @@ part's panel is visible: Space play/pause, ← → ±10 s, `[` `]` previous/next
 beat. With `audio: null` it is a manual stepper, so the page is useful
 before audio exists; with one frame the ribbon is hidden.
 
+`highlightCode(text, lang)` (also in `player.js`) returns coloured HTML
+for a listing — keywords, types, strings, numbers, comments — for
+`cpp` (default), `java`, `python`, `js`; the page wraps lines in
+`.line` spans and adds its own teaching marks (`slides.md`, "Code on
+slides").
+
 `assets/player.css` part 1 is what the player builds — keep its class names,
 restyle through the tokens. Every part's SVG lives in one document, so
 prefix SVG ids (markers, gradients, clip paths) with the part key; the

@@ -50,6 +50,51 @@ pattern-matching to the subject. The mix on three test chapters:
   geometric constructions (double reflection, screw decomposition); ten
   drills, ten structural exercises, four programming examples.
 
+## Code on slides
+
+Code is a drawing like any other: when the voice is on the code, the code
+takes the stage and the diagram steps aside — never a 0.7 rem listing in a
+sidebar with the important line cut off behind a scrollbar. The stage is
+one of three shapes, chosen per frame (`.stage`, `.stage.is-wide`,
+`.stage.is-swapped` in `player.css`): split, one column for a listing, or
+swapped so the code is on the stage and the diagram is the aside. A short
+change under a diagram goes in the `.tray` below it. A listing that does
+not fit at readable size is split across frames, never shrunk.
+
+Before/after is one frame that changes, the way the diagrams already do:
+the same listing, the changed lines lit (`.line.hl`), the wrong ones
+`.line.bad`, the fix `.line.good`, the rest `.line.dim` when the eye
+should skip it — not two blocks the listener has to diff. Colouring comes
+from `highlightCode(text, lang)` in `player.js` (keywords, types, strings,
+numbers, comments), the same palette in every chapter, and the teaching
+marks sit on top of it:
+
+```js
+pre.className = 'code';
+pre.innerHTML = lines.map(function (l, i) {
+  return '<span class="line' + (mark[i] ? ' ' + mark[i] : '') + '">' + highlightCode(l, 'cpp') + '</span>';
+}).join('');            // .line is display:block — no newline between them
+```
+
+The book's own code stays exactly as the book prints it. Staged code — the
+examples the lecture writes — is C++ in the house style:
+
+- 4-space indent, K&R braces (`{` on the same line), `for(`/`if(`/`while(`
+  with no space before the paren, packed loop headers
+  (`for(int i=0; i<n; i++)`), spaces around `=` `==` `&&` `||`
+- no optional braces: `if(!node) return;` on one line; single-statement
+  bodies unbraced; a `for/for/if` cascade runs unbraced
+- camelCase; `i j r c` for indices, `n m rows cols` for sizes; the answer is
+  `result`; helpers named for what they do (`dfs`, `backtrack`)
+- range-for and structured bindings (`for(auto [r, c] : cells)`); `auto`
+  there and nowhere else; plain `int`; C++20 freely (`ranges::sort`,
+  `contains`)
+- state that several helpers share lives in members, `private:` first
+- `//` comments above the line, lowercase, only where the invariant is not
+  obvious — one *why*, never a label of what the line does
+- as small as still shows the failure; whitespace between phases, not
+  between every line
+
 ## Which sections earn a part
 
 Give a stretch of the plan its own part when the slide shows something prose

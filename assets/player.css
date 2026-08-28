@@ -94,8 +94,25 @@ pre { background: var(--shade); padding: 0.75rem 1rem; border-radius: 6px; overf
 .card { background: var(--panel); border: 1px solid var(--rule); border-radius: 10px; padding: 1rem 1.15rem; }
 .card svg, .card canvas, .card img { max-width: 100%; height: auto; display: block; }
 .note { min-height: 3.2em; margin: 0.75rem 0; }
+/* code: colouring from highlightCode(); teaching marks are the page's own spans */
+.tok-kw { color: light-dark(#7a2e8f, #d3a6ea); }
+.tok-ty { color: light-dark(#1f5f8b, #8fc1e8); }
+.tok-fn { color: var(--ink); }
+.tok-str { color: light-dark(#8a4b08, #e0a96d); }
+.tok-num { color: light-dark(#0f6b5b, #7fd1c0); }
+.tok-cm { color: var(--muted); font-style: italic; }
+.tok-pp { color: var(--muted); }
+pre.code { font-size: 0.95rem; line-height: 1.5; tab-size: 4; white-space: pre; }
+pre.code .line { display: block; padding: 0 0.5rem; margin: 0 -0.5rem; border-radius: 3px; }
+pre.code .line.hl   { background: color-mix(in srgb, var(--mark) 30%, transparent); }
+pre.code .line.bad  { background: color-mix(in srgb, var(--bad) 14%, transparent); }
+pre.code .line.good { background: color-mix(in srgb, var(--good) 14%, transparent); }
+pre.code .line.dim  { opacity: 0.45; }
+/* stage layouts, chosen per frame: split (default), wide (one column), swapped (code on the stage, diagram aside) */
+.stage.is-wide { grid-template-columns: 1fr; }
+.stage.is-swapped > :first-child { order: 2; }
+.tray { margin-top: 0.75rem; }
 /* stroke classes apply to SVG shapes only, never to <text> or containers */
 svg :is(path, line, polyline, polygon, circle, ellipse, rect).is-focus { stroke: var(--accent); stroke-width: 3; }
 svg :is(path, line, polyline, polygon, circle, ellipse, rect).is-good  { stroke: var(--good); }
 svg :is(path, line, polyline, polygon, circle, ellipse, rect).is-bad   { stroke: var(--bad); stroke-dasharray: 4 3; }
-.line.is-focus { background: color-mix(in srgb, var(--mark) 30%, transparent); border-radius: 3px; }

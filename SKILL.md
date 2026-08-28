@@ -139,7 +139,10 @@ numbers.
 
 Draft each part's frames and beats together — they are the beat sheet —
 and place questions where a wrong answer teaches. Transcribe from page
-images any equation or figure the slide needs. Author `lecture.src.html`
+images any equation or figure the slide needs. Code takes the stage when
+the voice is on it, coloured by `highlightCode`, staged C++ in the house
+style, before/after as one frame that changes (`slides.md`, "Code on
+slides"). Author `lecture.src.html`
 with `{{PLAYER_CSS}}`, `{{PLAYER_JS}}`, `{{IMG:path}}`, one literal
 `<section data-part="key">` per part, and one `createLecture({parts})`
 call giving each part its frames and `render` (`sync-architecture.md`,

@@ -366,3 +366,38 @@ function createLecture(o) {
   fromHash();
   return { players: players, activate: activate };
 }
+
+/* Syntax colouring without a library: keywords, types, strings, numbers,
+ * comments, calls. highlightCode(text, lang?) -> HTML for a <pre>/<code>.
+ * lang: 'cpp' (default) | 'java' | 'python' | 'js'. Teaching marks (.hl,
+ * .bad, .good) are the page's own spans, wrapped around lines after this. */
+var CODE_WORDS = {
+  cpp: { kw: 'if else for while do return break continue switch case default new delete this class struct enum union namespace using template typename public private protected virtual override final const constexpr static inline auto void bool char int long short float double unsigned signed nullptr true false try catch throw operator sizeof friend explicit noexcept mutable',
+         ty: 'string vector map set unordered_map unordered_set pair tuple optional array deque queue stack priority_queue function shared_ptr unique_ptr size_t int8_t int16_t int32_t int64_t uint8_t uint16_t uint32_t uint64_t Money Report' },
+  java: { kw: 'if else for while do return break continue switch case default new this class interface enum extends implements public private protected static final abstract void boolean char int long short float double byte null true false try catch finally throw throws import package instanceof super synchronized',
+          ty: 'String List ArrayList Map HashMap Set HashSet Integer Long Double Boolean Object' },
+  python: { kw: 'if elif else for while return break continue def class lambda import from as pass yield with try except finally raise in is not and or None True False global nonlocal async await del assert',
+            ty: 'int str list dict set tuple float bool bytes range len print self' },
+  js: { kw: 'if else for while do return break continue switch case default new this class extends function var let const typeof instanceof in of null undefined true false try catch finally throw async await import export',
+        ty: 'Array Object Map Set Promise Number String Boolean Math JSON console document window' }
+};
+function highlightCode(text, lang) {
+  var w = CODE_WORDS[lang || 'cpp'] || CODE_WORDS.cpp;
+  var kw = {}, ty = {};
+  w.kw.split(' ').forEach(function (x) { kw[x] = 1; }); w.ty.split(' ').forEach(function (x) { ty[x] = 1; });
+  var esc = function (t) { return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
+  var re = /(\/\/[^\n]*|#[^\n]*|\/\*[\s\S]*?\*\/)|("(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*')|(\b\d+(?:\.\d+)?[fFuUlL]*\b)|([A-Za-z_]\w*)(?=\s*\()|([A-Za-z_]\w*)/g;
+  var out = '', last = 0, m;
+  while ((m = re.exec(text))) {
+    out += esc(text.slice(last, m.index));
+    var t = m[0], cls = null;
+    if (m[1]) cls = (t.charAt(0) === '#' && lang !== 'python') ? 'tok-pp' : 'tok-cm';
+    else if (m[2]) cls = 'tok-str';
+    else if (m[3]) cls = 'tok-num';
+    else if (m[4]) cls = kw[t] ? 'tok-kw' : (ty[t] ? 'tok-ty' : 'tok-fn');
+    else if (m[5]) cls = kw[t] ? 'tok-kw' : (ty[t] ? 'tok-ty' : null);
+    out += cls ? '<span class="' + cls + '">' + esc(t) + '</span>' : esc(t);
+    last = m.index + t.length;
+  }
+  return out + esc(text.slice(last));
+}
