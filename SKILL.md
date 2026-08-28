@@ -1,6 +1,6 @@
 ---
 name: chapter-to-synced-lecture
-description: Turn a book or textbook chapter (PDF) into a lecture given by its author — HTML slides plus narrated audio (ElevenLabs) that drives them, with click-to-answer questions and optional captions. Use this whenever someone gives you a chapter, paper, or textbook section and asks for a lecture, a podcast, a narrated walkthrough, an animated explainer, a "deep dive," an audio version, or a visual companion — and also when they ask to "turn this into a video/animation," "make this chapter listenable," or "teach me this chapter." Works for any subject — algorithms, software design, mathematics, graphics, economics — because the lecture is built from the chapter's own argument and examples, not a template. Do NOT use for interactive quizzing or active-recall study sessions; those are different skills.
+description: Turn a book or textbook chapter (PDF) into a lecture given by its author — HTML slides plus narrated audio (ElevenLabs) that drives them, with questions the audio stops on and word-synced captions. Use this whenever someone gives you a chapter, paper, or textbook section and asks for a lecture, a podcast, a narrated walkthrough, an animated explainer, a "deep dive," an audio version, or a visual companion — and also when they ask to "turn this into a video/animation," "make this chapter listenable," or "teach me this chapter." Works for any subject — algorithms, software design, mathematics, graphics, economics — because the lecture is built from the chapter's own argument and examples, not a template. Do NOT use for interactive quizzing or active-recall study sessions; those are different skills.
 ---
 
 # Chapter to synced lecture
@@ -63,11 +63,11 @@ strategies under them. Read it before anything else.
  │ 6  OPEN            lint.py (now also vs audio lengths) ─▶ xdg-open      │
  └─────────────────────────────────────────────────────────────────────────┘
 
-  IN THE BROWSER (lecture.html)
-     audio.currentTime ─▶ cues.js ─▶ frame to draw ─▶ the slide
-                                 ├─▶ subtitles (CC): sentence, current word lit
-                                 ├─▶ question: pause ─▶ click ─▶ reply ─▶ resume
-                                 └─▶ seek · ±10 s · beat ⏮⏭ · speed · keys
+  IN THE BROWSER (lecture.html) — a slideshow with the author's voice
+     audio.currentTime ─▶ cues.js ─▶ which slide ─▶ render(frame)   · slide number on the slide
+                                 ├─▶ caption: the sentence, current word lit · Transcript tab
+                                 ├─▶ ask: audio stops ─▶ listener thinks ─▶ Play ─▶ the answer
+                                 └─▶ ← → slides · Space play/pause · Shift+← → ±10 s · F fullscreen
 ```
 
 One shot: PDF in, `lecture.html` with audio out, opened in the browser.
@@ -76,8 +76,9 @@ end beyond one sentence if a piece of the chapter could not be used. Audio
 is generated once, at the end; the care goes into the steps before it.
 
 Vocabulary: a **part** is one tab with one audio file; a **frame** is one
-drawing state of its slide; a **beat** is one idea in the narration,
-starting at a frame; a **question** is a stop with clickable answers.
+slide; a **beat** is one idea in the narration, starting at a frame; an
+**ask** is a stop — the audio pauses on the question, Play brings the
+answer.
 
 ## Inputs
 
@@ -138,16 +139,16 @@ book, the chapter, the author — nothing about how the page was made
 numbers.
 
 Draft each part's frames and beats together — they are the beat sheet —
-and place questions where a wrong answer teaches. Transcribe from page
-images any equation or figure the slide needs. Code takes the stage when
-the voice is on it, coloured by `highlightCode`, staged C++ in the house
-style, before/after as one frame that changes (`slides.md`, "Code on
-slides"). Author `lecture.src.html`
-with `{{PLAYER_CSS}}`, `{{PLAYER_JS}}`, `{{IMG:path}}`, one literal
-`<section data-part="key">` per part, and one `createLecture({parts})`
-call giving each part its frames and `render` (`sync-architecture.md`,
-"The page" — tabs, hash, audio wiring are its job); maths as
-`$…$`/`$$…$$` in static markup, `\lt` `\gt` for inequalities; then
+and place asks where a wrong answer teaches. Transcribe from page images
+any equation or figure the slide needs. One canvas per frame; code fills
+the slide when the voice is on it, coloured by `highlightCode`, staged C++
+in the house style, before/after as one frame that changes (`slides.md`,
+"Code on slides"). Author `lecture.src.html` with `{{PLAYER_CSS}}`,
+`{{PLAYER_JS}}`, `{{IMG:path}}`, one literal `<section data-part="key">`
+per part holding a `.slide`, and one `createLecture({parts})` call giving
+each part its frames and `render` (`sync-architecture.md`, "The page" —
+tabs, hash, fullscreen, audio wiring are its job); maths as `$…$`/`$$…$$`
+in static markup, `\lt` `\gt` for inequalities; then
 
 ```bash
 python3 scripts/build_page.py lecture.src.html -o lecture.html
@@ -185,8 +186,7 @@ on a design chapter is not what matters on a geometry chapter.
 python3 scripts/build_audio.py script.md --out <outdir> [--voice <name|id>]
 ```
 
-One file per part plus one clip per question option; subtitles and
-`cues/cues.js` written alongside. Finished parts are skipped on rerun, so a
+One file per part; asks, subtitles and `cues/cues.js` written alongside. Finished parts are skipped on rerun, so a
 quota interruption resumes with the same command; `--force` rebuilds.
 Setup, voices, quota: `references/elevenlabs.md`. With no key, stop and
 say so.
@@ -209,7 +209,7 @@ end of the run.
 ├── lecture.src.html      authored source
 ├── lecture.html          built; self-contained; works without audio
 ├── script.md             author profile, glossary, outline, narration, questions
-├── audio/                one mp3 per part, one per question option
+├── audio/                one mp3 per part
 ├── cues/                 per-part cues + alignment + subtitles; cues.js
 ├── shots/                screenshots from step 3
 └── extract/

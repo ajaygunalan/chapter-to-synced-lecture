@@ -1,6 +1,10 @@
-/* Audio-synced transport. audio.currentTime is the only clock; the current
+/* Audio-synced slides. audio.currentTime is the only clock; the current
  * frame is derived from it on every animation tick. With audio:null it is a
- * manual stepper. Contract: references/sync-architecture.md. */
+ * manual stepper. Contract: references/sync-architecture.md.
+ *
+ * Navigation moves the position; Play decides whether sound comes out:
+ * ← → step frames (seek, never auto-play), Space play/pause, Shift+← → ±10 s,
+ * F fullscreen, 1–9 parts. An ask pauses the audio; Play resumes. */
 function createSyncedPlayer(o) {
   function nonEmpty(a) { return a && a.length ? a : null; }
   function lastAt(arr, t) {            // index of the last element with .t <= t
@@ -11,8 +15,8 @@ function createSyncedPlayer(o) {
   var frames = nonEmpty(o.frames) || [{}],
       audio  = o.audio || null,
       beats  = audio ? nonEmpty(o.beats) : null,
-      subs   = audio && o.transcript !== false ? nonEmpty(o.subs) : null,
-      questions = audio && nonEmpty(o.questions) ? o.questions.slice().sort(function (a, b) { return a.t - b.t; }) : null,
+      subs   = audio ? nonEmpty(o.subs) : null,
+      asks   = audio && nonEmpty(o.questions) ? o.questions.slice().sort(function (a, b) { return a.t - b.t; }) : null,
       timeline = !!beats,
       last   = frames.length - 1,
       single = frames.length <= 1,
@@ -46,21 +50,20 @@ function createSyncedPlayer(o) {
   function nameOf(i) { return frames[i].label || ('Step ' + (i + 1)); }
 
   // ---- transport --------------------------------------------------------
-  function btn(label, fn) {
+  function btn(label, fn, title) {
     var b = document.createElement('button');
     b.type = 'button'; b.className = 'btn'; b.textContent = label; b.onclick = fn;
+    if (title) b.title = title;
     o.mount.appendChild(b);
     return b;
   }
   function skip(d) { seek(Math.max(0, Math.min(audio.duration || 1e9, audio.currentTime + d))); }
-  var prev = btn('⏮ Beat', function () { step(-1); });
-  prev.title = 'Previous beat';
-  if (audio) btn('−10s', function () { skip(-10); });
-  var play = btn(audio ? '▶ Play' : 'Next step', toggle);
+  var prev = btn('◀', function () { step(-1); }, 'Previous slide (←)');
+  if (audio) btn('−10s', function () { skip(-10); }, 'Shift+←');
+  var play = btn(audio ? '▶ Play' : 'Next', toggle, 'Space');
   play.className = 'btn primary';
-  if (audio) btn('+10s', function () { skip(10); });
-  var next = btn('Beat ⏭', function () { step(1); });
-  next.title = 'Next beat';
+  if (audio) btn('+10s', function () { skip(10); }, 'Shift+→');
+  var next = btn('▶', function () { step(1); }, 'Next slide (→)');
   var again = btn('Restart', function () { audio ? seek(0) : show(0); });
   var scrub = null, clock = null, scrubbing = false, lastClock = '', lastScrub = -1;
   if (audio) {
@@ -107,6 +110,11 @@ function createSyncedPlayer(o) {
   o.mount.appendChild(counter);
   if (single && !audio) { prev.hidden = next.hidden = again.hidden = play.hidden = true; counter.textContent = 'narration not built yet'; }
 
+  // slide number, drawn on the slide itself (or, without a slide element, beside the transport)
+  var frameNo = document.createElement('span');
+  frameNo.className = 'frame-no';
+  (o.slide || o.mount).appendChild(frameNo);
+
   var ribbon = o.ribbon || document.createElement('div');
   ribbon.className = 'ribbon';
   if (!o.ribbon) o.mount.parentNode.insertBefore(ribbon, o.mount.nextSibling);
@@ -122,18 +130,17 @@ function createSyncedPlayer(o) {
     return t;
   });
 
-  // ---- subtitles: caption bar + scrolling transcript ------------------------
+  // ---- captions: caption bar under the slide, transcript given to the page -----
   // subs: [{t, end, text, words: [[t, word], …]}] from cues/<part>.json.
   var caption = null, transcript = null, subEls = [], subIdx = -1, wordIdx = -1, userScrolledAt = 0;
   if (subs) {
     caption = document.createElement('div');
     caption.className = 'caption';
     caption.setAttribute('aria-live', 'off');
+    ribbon.parentNode.insertBefore(caption, ribbon.nextSibling);
     transcript = document.createElement('div');
     transcript.className = 'transcript';
     transcript.setAttribute('role', 'list');
-    ribbon.parentNode.insertBefore(caption, ribbon.nextSibling);
-    caption.parentNode.insertBefore(transcript, caption.nextSibling);
     subEls = subs.map(function (s) {
       var p = document.createElement('p');
       p.className = 'sub';
@@ -161,7 +168,7 @@ function createSyncedPlayer(o) {
         caption.appendChild(span);
         caption.appendChild(document.createTextNode(' '));
       });
-      if (Date.now() - userScrolledAt > 4000) {
+      if (transcript.offsetParent && Date.now() - userScrolledAt > 4000) {
         var el = subEls[i], top = el.offsetTop - transcript.offsetTop;
         if (top < transcript.scrollTop || top + el.offsetHeight > transcript.scrollTop + transcript.clientHeight)
           transcript.scrollTo({ top: top - transcript.clientHeight * 0.3, behavior: 'smooth' });
@@ -179,72 +186,33 @@ function createSyncedPlayer(o) {
     }
   }
 
-  // ---- questions: the lecture stops, the listener chooses, the author replies -----
-  var qCard = null, qOpen = null, answered = {}, lastT = 0, replyAudio = null;
-  if (questions) {
-    qCard = document.createElement('div');
-    qCard.className = 'question';
-    qCard.hidden = true;
-    o.mount.parentNode.insertBefore(qCard, o.mount);
+  // ---- asks: the audio stops on the question; the listener thinks; Play resumes -----
+  var askCard = null, askOpen = null, asked = {}, lastT = 0;
+  if (asks) {
+    askCard = document.createElement('div');
+    askCard.className = 'ask';
+    askCard.hidden = true;
+    (o.slide || o.mount.parentNode).appendChild(askCard);
   }
-  function openQuestion(q) {
-    qOpen = q;
+  function openAsk(q) {
+    askOpen = q;
     audio.pause();
-    qCard.innerHTML = '';
-    var p = document.createElement('p'); p.className = 'prompt'; p.textContent = q.prompt; qCard.appendChild(p);
-    q.options.forEach(function (opt) {
-      var b = document.createElement('button');
-      b.type = 'button'; b.className = 'opt';
-      b.innerHTML = '<b>' + opt.letter + '</b> ' + opt.text;
-      b.onclick = function () { answer(q, opt, b); };
-      qCard.appendChild(b);
-    });
-    var skipBtn = document.createElement('button');
-    skipBtn.type = 'button'; skipBtn.className = 'btn skip'; skipBtn.textContent = 'Skip';
-    skipBtn.onclick = closeQuestion;
-    qCard.appendChild(skipBtn);
-    qCard.hidden = false;
-    qCard.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    askCard.textContent = q.prompt || '';
+    askCard.hidden = false;
   }
-  function answer(q, opt, chosen) {
-    Array.prototype.forEach.call(qCard.querySelectorAll('.opt'), function (b) { b.disabled = true; });
-    chosen.classList.add('is-chosen');
-    if (replyAudio) replyAudio.pause();
-    replyAudio = opt.audio ? new Audio(opt.audio) : null;
-    if (replyAudio) { replyAudio.addEventListener('ended', closeQuestion); replyAudio.addEventListener('error', closeQuestion); replyAudio.play(); }
-    else closeQuestion();
+  function closeAsk() {
+    if (!askOpen) return;
+    asked[askOpen.id] = true;
+    askOpen = null;
+    askCard.hidden = true;
   }
-  function closeQuestion() {           // the lecture resumes where it paused
-    if (!qOpen) return;
-    answered[qOpen.id] = true;
-    qOpen = null;
-    qCard.hidden = true;
-    audio.play();
-  }
-  function checkQuestions(t) {         // called only while playing: crossing q.t forward opens it
-    if (!questions || qOpen) { lastT = t; return; }
-    for (var i = 0; i < questions.length; i++) {
-      var q = questions[i];
-      if (!answered[q.id] && lastT < q.t && t >= q.t) { lastT = t; openQuestion(q); return; }
+  function checkAsks(t) {              // called only while playing: crossing q.t forward opens it
+    if (!asks || askOpen) { lastT = t; return; }
+    for (var i = 0; i < asks.length; i++) {
+      var q = asks[i];
+      if (!asked[q.id] && lastT < q.t && t >= q.t) { lastT = t; openAsk(q); return; }
     }
     lastT = t;
-  }
-
-  // ---- captions toggle (off by default; remembered per browser) -------------
-  var ccOn = false, ccBtn = null;
-  try { ccOn = localStorage.getItem('lecture-cc') === 'on'; } catch (e) {}
-  function applyCC() {
-    if (caption) caption.hidden = !ccOn;
-    if (transcript) transcript.hidden = !ccOn;
-    if (ccBtn) ccBtn.setAttribute('aria-pressed', ccOn ? 'true' : 'false');
-  }
-  if (subs) {
-    ccBtn = btn('CC', function () {
-      ccOn = !ccOn;
-      try { localStorage.setItem('lecture-cc', ccOn ? 'on' : 'off'); } catch (e) {}
-      applyCC();
-    });
-    ccBtn.title = 'Captions and transcript';
   }
 
   // ---- rendering --------------------------------------------------------
@@ -253,7 +221,8 @@ function createSyncedPlayer(o) {
     if (i !== idx) {
       idx = i;
       o.render(frames[i]);
-      if (!single) counter.textContent = nameOf(i) + '  ·  ' + (i + 1) + ' / ' + frames.length;
+      frameNo.textContent = (i + 1) + ' / ' + frames.length;
+      if (!single) counter.textContent = nameOf(i);
       if (litTick) litTick.classList.remove('is-now');
       litTick = ticks[i]; litTick.classList.add('is-now');
       if (!audio) { prev.disabled = i === 0; next.disabled = i === last; }
@@ -261,23 +230,19 @@ function createSyncedPlayer(o) {
     if (o.onBeat && b !== undefined && b !== beatIdx) { beatIdx = b; o.onBeat(beats[b]); }
   }
   function sync(t) { if (timeline) { var r = rowAt(t); show(r.frame, r.beat); } showSub(t); showClock(t); }
-  function seek(t) { audio.currentTime = t; lastT = t; sync(t); }
+  function seek(t) { closeAsk(); audio.currentTime = t; lastT = t; sync(t); }
   function goto(i) { timeline ? seek(timeOfFrame(i)) : show(i); }
-  function step(dir) {
-    if (!timeline) return show(idx + dir);
-    var k = Math.max(0, Math.min(beats.length - 1, rowAt(audio.currentTime).beat + dir));
-    seek(beats[k].t);
-  }
+  function step(dir) { goto(Math.max(0, Math.min(last, idx + dir))); }
   function toggle() {
     if (!audio) return show(idx + 1);
-    if (qOpen) { closeQuestion(); return; }   // pressing play on a question skips it
+    if (askOpen) { closeAsk(); audio.play(); return; }   // Play after a question brings the answer
     audio.paused ? audio.play() : audio.pause();
   }
-  function tick() { var t = audio.currentTime; sync(t); checkQuestions(t); rafId = requestAnimationFrame(tick); }
+  function tick() { var t = audio.currentTime; sync(t); checkAsks(t); rafId = requestAnimationFrame(tick); }
 
   if (audio) {
     audio.addEventListener('play', function () { play.textContent = '❚❚ Pause'; if (!rafId) rafId = requestAnimationFrame(tick); });
-    audio.addEventListener('pause', function () { play.textContent = '▶ Resume'; cancelAnimationFrame(rafId); rafId = null; });
+    audio.addEventListener('pause', function () { play.textContent = askOpen ? '▶ Answer' : '▶ Resume'; cancelAnimationFrame(rafId); rafId = null; });
     audio.addEventListener('ended', function () { play.textContent = '▶ Play'; });
   }
   // keys act only while this part's panel is visible and focus is not in a field
@@ -287,34 +252,33 @@ function createSyncedPlayer(o) {
       var tag = (ev.target.tagName || '').toLowerCase();
       if (tag === 'input' || tag === 'textarea' || tag === 'select' || ev.metaKey || ev.ctrlKey || ev.altKey) return;
       if (ev.key === ' ') { ev.preventDefault(); toggle(); }
-      else if (ev.key === 'ArrowLeft') { ev.preventDefault(); audio ? skip(-10) : step(-1); }
-      else if (ev.key === 'ArrowRight') { ev.preventDefault(); audio ? skip(10) : step(1); }
-      else if (ev.key === '[') step(-1);
-      else if (ev.key === ']') step(1);
+      else if (ev.key === 'ArrowLeft') { ev.preventDefault(); ev.shiftKey && audio ? skip(-10) : step(-1); }
+      else if (ev.key === 'ArrowRight') { ev.preventDefault(); ev.shiftKey && audio ? skip(10) : step(1); }
     });
   }
   timeline ? sync(0) : show(0);
-  applyCC();
 
   return {
     stop: function () { if (audio) audio.pause(); cancelAnimationFrame(rafId); rafId = null; },
     goto: goto,       // frame index (a time on the timeline, a step without audio)
     seek: seek,
-    step: step,       // ±1 beat (or ±1 frame without audio)
+    step: step,       // ±1 frame
     toggle: toggle,   // play/pause (or next frame without audio)
-    element: ribbon
+    element: ribbon,
+    transcript: transcript   // the page (createLecture) places it behind the Transcript tab
   };
 }
 
-/* The page: one player per part, tabs, the #part:frame hash, and the
- * audio/cues wiring. Pages supply frames and render only.
+/* The page: one player per part, the tabs (parts + Transcript), the
+ * #part:frame hash, fullscreen, and the audio/cues wiring. Pages supply
+ * frames and render only.
  *   createLecture({ parts: [{ key, frames, render, name?, tab?, onBeat? }, …],
  *                   tabs?: element (default .tabs; null for none) })
  *   -> { players: {key: player}, activate(key, frame?) } */
 function createLecture(o) {
   var cues = (typeof window.LECTURE_CUES === 'object' && window.LECTURE_CUES) || {};
   var tabs = o.tabs === undefined ? document.querySelector('.tabs') : o.tabs;
-  var players = {}, entries = [], active = null;
+  var players = {}, entries = [], active = null, reading = false;
 
   o.parts.forEach(function (m) {
     var section = document.querySelector('[data-part=' + JSON.stringify(m.key) + ']');
@@ -325,6 +289,7 @@ function createLecture(o) {
     if (c && c.beats && c.beats.length) { audio = new Audio(c.audio || 'audio/' + m.key + '.mp3'); audio.preload = 'metadata'; }
     players[m.key] = createSyncedPlayer({
       frames: m.frames, render: m.render, onBeat: m.onBeat, mount: mount, audio: audio,
+      slide: section.querySelector('.slide'),
       beats: c && c.beats, subs: c && c.subs, questions: c && c.questions
     });
     var tab = null;
@@ -338,6 +303,30 @@ function createLecture(o) {
     entries.push({ key: m.key, section: section, tab: tab });
   });
 
+  // the Transcript tab: the active part's sentences, click to jump; audio keeps playing
+  var panel = document.createElement('section');
+  panel.className = 'transcript-panel';
+  panel.hidden = true;
+  var readTab = null;
+  if (tabs && entries.some(function (e) { return players[e.key].transcript; })) {
+    readTab = document.createElement('button');
+    readTab.type = 'button'; readTab.className = 'tab-transcript'; readTab.setAttribute('role', 'tab'); readTab.textContent = 'Transcript';
+    readTab.onclick = function () { showReading(!reading); };
+    tabs.appendChild(readTab);
+    tabs.parentNode.insertBefore(panel, tabs.nextSibling);
+  }
+  function showReading(on) {
+    reading = on;
+    entries.forEach(function (e) { e.section.classList.toggle('is-active', !on && e.key === active); });
+    panel.hidden = !on;
+    if (readTab) readTab.setAttribute('aria-selected', on ? 'true' : 'false');
+    if (on) {
+      panel.innerHTML = '';
+      var tr = players[active] && players[active].transcript;
+      if (tr) panel.appendChild(tr);
+    }
+  }
+
   function activate(key, frame) {
     if (active !== key) {
       entries.forEach(function (e) {
@@ -349,6 +338,7 @@ function createLecture(o) {
       active = key;
       try { history.replaceState(null, '', '#' + key); } catch (e) {}
     }
+    if (reading) showReading(false);
     if (frame != null && !isNaN(frame)) players[key].goto(+frame);
   }
   function fromHash() {
@@ -356,15 +346,23 @@ function createLecture(o) {
     var known = entries.some(function (e) { return e.key === h[0]; });
     if (entries.length) activate(known ? h[0] : entries[0].key, h[1] !== undefined && h[1] !== '' ? +h[1] : null);
   }
+  function fullscreen(on) {
+    document.body.classList.toggle('is-fullscreen', on);
+    if (on && document.documentElement.requestFullscreen && !document.fullscreenElement) document.documentElement.requestFullscreen().catch(function () {});
+    if (!on && document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(function () {});
+  }
+  document.addEventListener('fullscreenchange', function () { if (!document.fullscreenElement) document.body.classList.remove('is-fullscreen'); });
   window.addEventListener('hashchange', fromHash);
   document.addEventListener('keydown', function (ev) {
     var tag = (ev.target.tagName || '').toLowerCase();
     if (tag === 'input' || tag === 'textarea' || tag === 'select' || ev.metaKey || ev.ctrlKey || ev.altKey) return;
     var n = +ev.key;
     if (ev.key.length === 1 && n >= 1 && n <= entries.length) activate(entries[n - 1].key);
+    else if (ev.key === 'f' || ev.key === 'F') fullscreen(!document.body.classList.contains('is-fullscreen'));
+    else if (ev.key === 'Escape') fullscreen(false);
   });
   fromHash();
-  return { players: players, activate: activate };
+  return { players: players, activate: activate, fullscreen: fullscreen };
 }
 
 /* Syntax colouring without a library: keywords, types, strings, numbers,

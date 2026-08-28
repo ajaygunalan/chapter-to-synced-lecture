@@ -7,9 +7,9 @@ and playback speed for free.
 
 ## Frames
 
-A part's slide is an array of **frames** — snapshots the page can draw.
-`player.js` treats them as opaque and calls your `render(frame)`; it reads
-two optional keys:
+A part's slides are an array of **frames** — snapshots the page can draw,
+one canvas each. `player.js` treats them as opaque and calls your
+`render(frame)`; it reads two optional keys:
 
 - `label` — the name shown on the ribbon tick and counter ("Facade", "apply
   the rotor"); default "Step n"
@@ -65,9 +65,7 @@ file is blocked on `file://`). Regenerating audio never touches the HTML.
     { "id": "prim-aside", "frame": null, "t": 21.9, "end": 30.2 },
     { "id": "prim-pick",  "frame": 6,    "t": 30.2, "end": 38.0 }
   ],
-  "questions": [ { "id": "prim-q1", "t": 41.2,
-                   "prompt": "Three edges leave what we own. Which one do I take?",
-                   "options": [ { "letter": "A", "text": "A–D, weight 7", "audio": "audio/prim.prim-q1.A.mp3" }, … ] } ],
+  "questions": [ { "id": "prim-ask1", "t": 41.2, "prompt": "Three edges leave what we own. Which one do I take?" } ],
   "subs": [ { "t": 7.4, "end": 12.1,
               "text": "Now look at every edge leaving that first vertex.",
               "words": [[7.4, "Now"], [7.6, "look"], …] }, … ]
@@ -76,19 +74,18 @@ file is blocked on `file://`). Regenerating audio never touches the HTML.
 
 Every time comes from one table, `cues/<part>.align.json` — the start time
 of each word, derived from the provider's per-character alignment. Beat `t`
-is the time of its first word; a question's `t` is where its prompt ends;
+is the time of its first word; an ask's `t` is where the question ends;
 subtitles are sentences with their words' times.
 
-**Questions.** When playback crosses `t` the player pauses, shows the prompt
-and options, plays the chosen option's reply clip, then resumes. Scrubbing
-past a question does not trigger it; Play or Skip dismisses one.
+**Asks.** An `<!-- ask -->` in the script after the question's paragraph.
+When playback crosses `t` the player pauses and shows the question on the
+slide; the listener thinks; Play (or Space) resumes, and the answer is
+simply what the author says next. Seeking past an ask does not trigger it.
 
-**Subtitles.** The player shows a caption bar (current sentence; words
-light as spoken, the current one marked) and a transcript (every sentence;
-the current one highlighted and auto-scrolled unless the reader scrolled it
-recently; click seeks the audio). Both are behind the `CC` toggle, off by
-default, remembered per browser. `--subtitles` rebuilds them from the
-alignment file without an API call.
+**Captions.** Under the slide, the current sentence with words lit as
+spoken and the current one marked — always on. The **Transcript** tab (the
+last tab) shows every sentence of the active part; click one to jump
+there; the audio keeps playing while you read.
 
 ## The page
 
@@ -96,27 +93,33 @@ alignment file without an API call.
 createLecture({
   parts: [ { key: 'prim', name: 'Prim', frames: [...], render: fn(frame) }, … ],
   tabs: document.querySelector('.tabs')     // optional; default .tabs; null for none
-}) -> { players: {key: player}, activate(key, frame?) }
+}) -> { players: {key: player}, activate(key, frame?), fullscreen(on) }
 ```
 
 `createLecture` owns everything a page used to copy: one `<section
-data-part="key">` per part (found by key; a `.transport` inside it is the
-mount, or one is appended), the cue lookup, `new Audio('audio/<key>.mp3')`
-only when cues exist, the tab buttons (`name` as text or `tab` as HTML), the
-`#part:frame` hash on load and on `hashchange` — which is how the
-screenshots in step 3 open any frame headlessly — and number keys 1–9 for
-tabs. Switching tabs stops the other part's audio. A page needs the frames
-and `render` and nothing else; `onBeat(beat)` is optional.
+data-part="key">` per part (found by key; a `.slide` inside it is the
+canvas the player draws the slide number and the ask onto; a `.transport`
+is the mount, or one is appended), the cue lookup, `new
+Audio('audio/<key>.mp3')` only when cues exist, the tab buttons (`name` as
+text or `tab` as HTML) plus the Transcript tab, the `#part:frame` hash on
+load and on `hashchange` — which is how the screenshots in step 3 open any
+frame headlessly — fullscreen (`F`, `Esc`), and number keys 1–9 for parts.
+Switching parts stops the other part's audio. A page needs the frames and
+`render` and nothing else; `onBeat(beat)` is optional.
+
+Navigation moves the position; Play decides whether sound comes out. ← →
+step one slide (with audio: seek to that slide's moment, no auto-play, so
+flipping through with the audio paused is silent); Space play/pause; Shift+←
+→ ±10 s; the ribbon and the seek bar do the same with the mouse. In
+fullscreen only the slide, the caption and the transport remain.
 
 Underneath, each part is a `createSyncedPlayer({frames, beats, subs,
-questions, audio, render, mount, onBeat?, ribbon?, transcript?, keys?})`
-returning `{goto(i), seek(seconds), step(±1), toggle(), stop(), element}`.
-Its transport: a seek bar with a `m:ss / m:ss` clock, ⏮ beat, −10 s,
-Play/Pause/Resume, +10 s, beat ⏭, Restart, speed (0.85–1.5×), `CC`, the
-frame ribbon, then the caption and transcript. Keys, active while the
-part's panel is visible: Space play/pause, ← → ±10 s, `[` `]` previous/next
-beat. With `audio: null` it is a manual stepper, so the page is useful
-before audio exists; with one frame the ribbon is hidden.
+questions, audio, render, mount, slide?, onBeat?, ribbon?, keys?})`
+returning `{goto(i), seek(seconds), step(±1), toggle(), stop(), element,
+transcript}`. Its transport: a seek bar with a `m:ss / m:ss` clock, ◀,
+−10 s, Play/Pause/Resume, +10 s, ▶, Restart, speed (0.85–1.5×), the frame
+ribbon, then the caption. With `audio: null` it is a manual stepper, so the
+page is useful before audio exists; with one frame the ribbon is hidden.
 
 `highlightCode(text, lang)` (also in `player.js`) returns coloured HTML
 for a listing — keywords, types, strings, numbers, comments — for

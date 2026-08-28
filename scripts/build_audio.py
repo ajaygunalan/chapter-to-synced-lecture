@@ -3,9 +3,9 @@
 script.md -> <out>/audio/<part>.mp3 + <out>/cues/<part>.json + <out>/cues/cues.js
 
 One request per part (chunked under the model's character limit and
-stitched), one audio file per part, one clip per question option, and a cue
-per beat whose timestamp comes from the character alignment ElevenLabs
-returns. Format: references/narration-craft.md; provider: references/elevenlabs.md.
+stitched), one audio file per part, and a cue per beat whose timestamp comes
+from the character alignment ElevenLabs returns; an <!-- ask --> becomes a
+stop the player pauses at. Format: references/narration-craft.md; provider: references/elevenlabs.md.
 
     build_audio.py --check                          key scopes and credit balance
     build_audio.py --probe [--voice NAME|ID]        one 25-char request: proves the TTS scope works
@@ -33,7 +33,7 @@ from pathlib import Path
 
 import requests
 
-from lecture_format import (COMMENT_RE, PAUSE_RE, SEP, align_path, audio_path, clip_path, cue_path,
+from lecture_format import (COMMENT_RE, PAUSE_RE, SEP, align_path, audio_path, cue_path,
                             duration_of, para_offsets, parse_parts, parse_pronounce, walk)
 from subtitles import align_from_char_starts, attach_subs, build_subs, time_at
 
@@ -71,26 +71,20 @@ def prose_text(block):
 
 
 def build_narration(body, rules, warn):
-    """-> (paragraphs, shown, beats, questions). beat["para"] is the paragraph
-    the beat starts on; question["para"] is the paragraph AFTER its prompt (the
-    audio pauses where that paragraph would start)."""
-    paragraphs, shown, beats, questions = [], [], [], []
+    """-> (paragraphs, shown, beats, asks). beat["para"] is the paragraph the
+    beat starts on; an ask is {"para": the paragraph AFTER the question, "prompt":
+    the question as shown} — the audio pauses where that paragraph would start."""
+    paragraphs, shown, beats, asks = [], [], [], []
     for beat, items in walk(body):
         texts = []
         for item in items:
             kind = item[0]
-            if kind == "question":
-                q = item[1]
-                if not q["options"]:
-                    warn(f"question '{q['id']}' has no 'A. option | reply' lines; dropped")
+            if kind == "ask":
+                if not texts and not paragraphs:
+                    warn("<!-- ask --> with nothing before it; dropped")
                     continue
-                pair = spoken_text(q["prompt"], rules)
-                if pair[0]:
-                    texts.append(pair)
-                q["para"] = len(paragraphs) + len(texts)
-                for o in q["options"]:
-                    o["reply"] = spoken_text(o["reply"], rules)[0]
-                questions.append(q)
+                prompt = texts[-1][1] if texts else shown[-1]
+                asks.append({"para": len(paragraphs) + len(texts), "prompt": prompt})
             elif kind == "display":
                 if item[2] is None:
                     warn(f"dropped display block with no spoken form: {item[1].strip()[:50]!r}")
@@ -108,7 +102,7 @@ def build_narration(body, rules, warn):
             beats.append(beat)
         paragraphs.extend(t for t, _ in texts)
         shown.extend(s for _, s in texts)
-    return paragraphs, shown, beats, questions
+    return paragraphs, shown, beats, asks
 
 
 def chunk_paragraphs(paragraphs, limit):
@@ -313,14 +307,12 @@ def main():
     ok, total_chars, problems, spent, rate = True, 0, [], 0, None
     for key, body in parts.items():
         warn = lambda msg, key=key: problems.append(f"{key}: {msg}")
-        paragraphs, shown, beats, questions = build_narration(body, rules, warn)
+        paragraphs, shown, beats, asks = build_narration(body, rules, warn)
         text = SEP.join(paragraphs)
         offsets = para_offsets(paragraphs)
         chunks = chunk_paragraphs(paragraphs, limit)
-        reply_chars = sum(len(o["reply"]) for q in questions for o in q["options"])
-        total_chars += len(text) + reply_chars
-        print(f"{key}: {len(beats)} beats, {len(questions)} question(s), {len(text):,} chars"
-              f"{f' + {reply_chars:,} in replies' if reply_chars else ''} in {len(chunks)} request(s), "
+        total_chars += len(text)
+        print(f"{key}: {len(beats)} beats, {len(asks)} ask(s), {len(text):,} chars in {len(chunks)} request(s), "
               f"~{len(text) / CHARS_PER_MIN:.1f} min")
         if not beats:
             warn("no beats; skipped")
@@ -367,24 +359,9 @@ def main():
 
         concat_mp3(pieces, audio_path(args.out, key))
         shutil.rmtree(tmp, ignore_errors=True)
-        # a question pauses the main line where the paragraph after its prompt would start
-        qcues = []
-        for q in questions:
-            q_t = time_at(align, offsets[q["para"]]) if q["para"] < len(offsets) else t0
-            opts = []
-            for o in q["options"]:
-                clip = clip_path(args.out, key, q["id"], o["letter"])
-                if not clip.exists() or rebuild:
-                    try:
-                        audio, _, _, cost = api.synthesize(o["reply"], args.voice, args.model, settings, args.seed)
-                        clip.write_bytes(audio)
-                        spent += int(cost or 0)
-                    except ApiError as e:
-                        print(f"  ! {key}: reply {q['id']}.{o['letter']} failed {e}", file=sys.stderr)
-                        ok = False
-                        continue
-                opts.append({"letter": o["letter"], "text": o["text"], "audio": f"audio/{clip.name}"})
-            qcues.append({"id": q["id"], "t": round(q_t, 3), "prompt": q["prompt"], "options": opts})
+        # an ask pauses the main line where the paragraph after the question would start
+        qcues = [{"id": f"{key}-ask{n + 1}", "t": round(time_at(align, offsets[a["para"]]) if a["para"] < len(offsets) else t0, 3),
+                  "prompt": a["prompt"]} for n, a in enumerate(asks)]
         subs = build_subs(paragraphs, shown, align, t0)
         align_path(args.out, key).write_text(json.dumps({"words": align}))
         cue_path(args.out, key).write_text(json.dumps({

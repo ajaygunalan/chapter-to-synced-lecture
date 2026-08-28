@@ -22,7 +22,7 @@ treatment follows. Never start from a list of slide types you want to build.
 | shows maths implemented as code | **equation → code** | equation and listing side by side, corresponding parts marked together |
 | introduces vocabulary or a formal object | **definition** | static labelled figure, or an annotated formula when the definition is an equation |
 | tells a story about a real problem being solved | **case study** | annotated scene; usually voice-only |
-| poses a problem for the reader | **exercise** | a question: a couple of options, each with the author's reply |
+| poses a problem for the reader | **exercise** | an ask: the audio stops on the question, the answer follows |
 | drills notation or mechanics (many short items) | **drill set** | skip, or one representative drill as a question |
 
 A section can be two kinds; prefer the one that carries its *argument*. A
@@ -52,14 +52,15 @@ pattern-matching to the subject. The mix on three test chapters:
 
 ## Code on slides
 
-Code is a drawing like any other: when the voice is on the code, the code
-takes the stage and the diagram steps aside — never a 0.7 rem listing in a
-sidebar with the important line cut off behind a scrollbar. The stage is
-one of three shapes, chosen per frame (`.stage`, `.stage.is-wide`,
-`.stage.is-swapped` in `player.css`): split, one column for a listing, or
-swapped so the code is on the stage and the diagram is the aside. A short
-change under a diagram goes in the `.tray` below it. A listing that does
-not fit at readable size is split across frames, never shrunk.
+A frame is one canvas (`.slide`): whatever that moment needs — a diagram,
+a listing, both, a table — composed on it and sized to be read from across
+a room, with a one-line note under it. No permanent sidebar. Code is a
+drawing like any other: when the voice is on the code, the code fills the
+slide and the diagram shrinks or leaves — never a 0.7 rem listing in a
+sidebar with the important line cut off behind a scrollbar. A listing that
+does not fit at readable size is split across frames, never shrunk. The
+player draws the slide number and the ask onto the `.slide`; the page
+draws everything else.
 
 Before/after is one frame that changes, the way the diagrams already do:
 the same listing, the changed lines lit (`.line.hl`), the wrong ones

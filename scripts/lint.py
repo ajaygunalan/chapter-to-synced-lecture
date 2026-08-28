@@ -9,8 +9,7 @@ Nothing here judges the teaching; that is the review in SKILL.md step 4.
 - beat ids are unique; beat start frames increase strictly within a part
 - every display block has a spoken form; prose never contains `$` or a
   maths glyph — those are what the glossary exists to replace
-- a question block has a prompt and two or more distinct options, each with
-  a reply
+- an `<!-- ask -->` follows a prose paragraph (the question the audio stops on)
 - the header's outline block maps every section to a real part or `skip`;
   with --headings, every heading in that file appears in the outline
 - no two elements in the page share an id (a duplicate SVG marker or
@@ -57,7 +56,7 @@ def main():
 
     seen = set()
     for k, body in parts.items():
-        ids, last_frame, n_q = [], -1, 0
+        ids, last_frame, n_q, prev = [], -1, 0, None
         for beat, items in walk(body):
             if beat:
                 if beat["id"] in seen:
@@ -70,13 +69,9 @@ def main():
                                         f"(previous start {last_frame})")
                     last_frame = beat["frame"]
             for item in items:
-                if item[0] == "question":
-                    q = item[1]
-                    letters = [o["letter"] for o in q["options"]]
-                    if len(letters) < 2 or len(set(letters)) != len(letters):
-                        problems.append(f"{k}/{q['id']}: needs two or more distinct options as 'A. text | reply'")
-                    if not q["prompt"]:
-                        problems.append(f"{k}/{q['id']}: no prompt text before the options")
+                if item[0] == "ask":
+                    if prev != "prose":
+                        problems.append(f"{k}: <!-- ask --> must follow the question's prose paragraph")
                     n_q += 1
                 elif item[0] == "display":
                     if item[2] is None:
@@ -86,9 +81,10 @@ def main():
                     if bad:
                         problems.append(f"{k}: {' '.join(bad)} in prose — say it in words (glossary) or move it "
                                         f"to a display block: {item[1].strip()[:50]!r}")
+                prev = item[0]
         if not ids:
             problems.append(f"part '{k}' has no beats")
-        notes.append(f"{k}: {len(ids)} beats, {n_q} question(s)")
+        notes.append(f"{k}: {len(ids)} beats, {n_q} ask(s)")
 
         cf = cue_path(out, k)
         if cf.exists():

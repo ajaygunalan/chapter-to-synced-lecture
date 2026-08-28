@@ -64,7 +64,7 @@ glossary or a spoken form. The linter rejects `$` and maths glyphs in prose.
 | "I'll give you the dates because the chapter doesn't." | "Meyer, 1988. Liskov, the year before." — the source sits in the plan |
 | "The reader will note that the cut property guarantees safety." | "Here's why you can trust that edge: it crosses the cut, and nothing cheaper does." |
 | "Prim adds the lightest crossing edge." (cold) | "Obvious plan: grab the cheapest edge anywhere. Feels right? Watch it strand a vertex… that's why I only look at the frontier." |
-| "Next Prim picks C–E with weight 2." | "Three edges leave the tree. Which one?" — then a question block; C–E's reply: "you're thinking like the algorithm." |
+| "Next Prim picks C–E with weight 2." | "Three edges leave the tree. Which one?" — `<!-- ask -->` — "C–E. If you reached for A–D, that's the trap." |
 | "MST cost is Σ w(e), O(E log V) via a heap." | "Add up the weights you kept. With a heap, the whole thing runs in E log V." |
 | a 40-word sentence with a semicolon | two sentences, one idea each; the second starts with "So". |
 | "That concludes Prim's algorithm." | "So that grows one tree. But what if you grew a forest — many little trees merging? That's Kruskal, and it's next." |
@@ -121,14 +121,11 @@ Say we have to wire seven towns… <!-- pause 2s --> …and that guess is three
 too heavy.
 
 <!-- beat: prim-scan | frame 1 -->
-<!-- question: prim-q1 -->
 Three edges leave what we own. Which one do I take?
-A. A–D, weight 7 | Cheapest anywhere — but it doesn't touch the tree. I only look at the frontier.
-B. B–C, weight 7 | Right. The cheapest way out of what we already own.
-C. A–G, weight 12 | Three cheaper doors exist. Never that one.
-<!-- end -->
+<!-- ask -->
 
-Here's why that's safe…
+If you said the cheapest edge anywhere — A–D, seven — that's the trap: it
+doesn't touch the tree. B–C. Here's why that's safe…
 
 ## part: nets
 <!-- beat: nets-1 -->
@@ -139,10 +136,9 @@ Here's why that's safe…
   and matches `data-part="<key>"` in the page.
 - `<!-- beat: id | frame N -->` starts a beat at frame N; `<!-- beat: id -->`
   holds (semantics: `sync-architecture.md`, "Beats start at a frame").
-- `<!-- question: id -->` … `<!-- end -->`: the prompt (spoken), then the
-  options as `A. option | reply` lines — as many as there are real
-  misconceptions, lettered in order; options on screen, replies recorded.
-  No blank lines inside the block.
+- `<!-- ask -->` right after the question's paragraph: the audio stops
+  there, the question stays on the slide, and Play brings the next
+  paragraph — the answer, which may open with the trap ("if you said…").
 - `<!-- pause 2s -->` inside prose becomes silence (the engine's limit is
   3 s).
 - `outline` maps every heading of `extract/outline.txt`, including the

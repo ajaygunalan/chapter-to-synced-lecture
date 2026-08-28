@@ -41,13 +41,12 @@ robot pose — as the stage for the real trouble, never as the trouble
 itself. Nothing from thin air.
 
 **3. Ask before telling.** Where the listener would guess wrong and learn
-from it, stop and ask. The question offers a couple of choices — the real
-misconceptions, not filler, and "none / all of the above" when that is the
-real trap — and every choice carries the author's short recorded reply:
-"that's the trap, and here's why…". No typed answers; a lecture cannot
+from it, stop and ask. The voice asks; the audio stops; the question stays
+on the slide; the listener thinks as long as they like; Play brings the
+answer — which opens with the trap when the trap is the lesson: "if you
+reached for the cheapest edge anywhere, here's why not". A lecture cannot
 listen, but an author can anticipate. Where there is no such spot, there
-is no question — some parts have several, some none. Elsewhere, ask and
-wait: a pause, the slide frozen on the question, then the answer.
+is no question — some parts have several, some none.
 
 **4. The slide carries the state; the voice carries the meaning.** The
 picture shows what is — the distance table, the parent array, the inner
@@ -77,9 +76,9 @@ lacks; where the book is wrong, show it corrected on the slide.
   with its trouble, gives the cast (objects and notation) before the first
   mechanism, and closes by returning to the opening trouble with the tool
   in hand.
-- Captions and transcript exist for replaying and unclear words; they are
-  a toggle (`CC`), off by default, because verbatim text beside a changing
-  slide splits attention.
+- The caption under the slide — the sentence being said, word by word — is
+  always there; the full transcript lives behind its own tab so it never
+  competes with the slide.
 - Audio is generated once per part. Length is whatever the part takes;
   nothing is rewritten or re-recorded to change it.
 

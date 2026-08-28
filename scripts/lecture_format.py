@@ -4,8 +4,9 @@ subtitles.py and lint.py import this so they cannot disagree. The
 human-readable description is references/narration-craft.md, "Script format".
 
 Vocabulary: a PART is one tab of the lecture with one audio file; a FRAME is
-one drawing state of its slide; a BEAT is one idea in the narration, starting
-at a frame; a QUESTION is a stop with clickable answers.
+one slide; a BEAT is one idea in the narration, starting at a frame; an ASK
+is a stop — the audio pauses after the question so the listener can think,
+and Play brings the answer.
 """
 
 import re
@@ -23,8 +24,7 @@ PRONOUNCE_RE = re.compile(r"<!--\s*pronounce:\s*(.*?)-->", re.S)
 OUTLINE_RE = re.compile(r"<!--\s*outline\s*\n(.*?)-->", re.S)
 COMMENT_RE = re.compile(r"<!--.*?-->", re.S)
 PAUSE_RE = re.compile(r"<!--\s*pause\s+([\d.]+)\s*s?\s*-->")
-QUESTION_RE = re.compile(r"<!--\s*question:\s*(\S+)\s*-->(.*?)<!--\s*end\s*-->", re.S)
-OPTION_RE = re.compile(r"^\s*([A-Z])[.)]\s*(.+?)\s*\|\s*(.+?)\s*$", re.M)
+ASK_RE = re.compile(r"<!--\s*ask\s*-->")
 PROSE_START_RE = re.compile(r"""^\s*[\w"'“‘(]""")
 
 
@@ -32,10 +32,6 @@ PROSE_START_RE = re.compile(r"""^\s*[\w"'“‘(]""")
 
 def audio_path(out, part):
     return out / "audio" / f"{part}.mp3"
-
-
-def clip_path(out, part, qid, letter):
-    return out / "audio" / f"{part}.{qid}.{letter}.mp3"
 
 
 def cue_path(out, part):
@@ -83,14 +79,6 @@ def parse_beats(body):
     return pieces
 
 
-def parse_question(m):
-    """QUESTION_RE match -> {"id", "prompt", "options": [{"letter", "text", "reply"}]}"""
-    body = m.group(2)
-    opts = [{"letter": o.group(1), "text": o.group(2), "reply": o.group(3)} for o in OPTION_RE.finditer(body)]
-    prompt = COMMENT_RE.sub("", OPTION_RE.sub("", body))
-    return {"id": m.group(1), "prompt": " ".join(prompt.split()), "options": opts}
-
-
 def blocks(raw):
     """Paragraph-level blocks. A block that is only a spoken comment is merged
     into the block before it, so the comment may sit after a blank line."""
@@ -114,16 +102,18 @@ def is_display_block(block):
 def walk(body):
     """The one reading of a part's body, shared by the builder and the linter:
     -> [(beat, items)] where each item is
-         ("question", q)                q from parse_question
+         ("ask",)                       the audio stops after the block before it
          ("display", block, spoken)     spoken is the <!-- spoken --> text or None
          ("prose", block)"""
     out = []
     for beat, raw in parse_beats(body):
         items = []
         for b in blocks(raw):
-            qm = QUESTION_RE.search(b)
-            if qm:
-                items.append(("question", parse_question(qm)))
+            if ASK_RE.search(b):
+                b = ASK_RE.sub("", b)
+                if b.strip():                      # marker on the prompt's own block
+                    items.append(("prose", b))
+                items.append(("ask",))
                 continue
             sm = SPOKEN_RE.search(b)
             if sm:
