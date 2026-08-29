@@ -231,7 +231,9 @@ def main():
           + (f"; spent {spent:,} credits this run" if spent else ""))
     if not args.recue:
         print(f"total: {total_chars:,} chars, ~{total_chars / CHARS_PER_MIN:.0f} min of audio")
-    stamp(args.out, f"audio {args.engine}" + (" recue" if args.recue else ""))
+    if not args.recue:
+        stamp(args.out, "record", f"{n} part(s), {total_chars / CHARS_PER_MIN:.0f} min of audio, {args.engine}"
+                                  + (f", {spent:,} credits" if spent else ""))
     sys.exit(0 if ok else 1)
 
 

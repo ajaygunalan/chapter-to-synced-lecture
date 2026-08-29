@@ -19,7 +19,6 @@ import re
 import sys
 from pathlib import Path
 
-from lecture_format import stamp
 from render_math import cache_path, render_html, report
 
 HERE = Path(__file__).resolve().parent
@@ -49,7 +48,6 @@ def main():
     page, n_img = IMG_RE.subn(embed, page)
     page, n_math, errors = render_html(page, cache_path(args.out))
     args.out.write_text(page)
-    stamp(args.out.parent, "page")
     print(f"{args.out}: assets inlined, {n_img} image(s) embedded, {n_math} maths expression(s), {len(page):,} bytes")
     report(errors)
     sys.exit(1 if errors else 0)

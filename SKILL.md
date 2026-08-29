@@ -14,19 +14,21 @@ anything else.
 ## The run
 
 ```
- 1 READ      extract.py ─▶ extract/            read the text; look at the flagged pages
- 2 PLAN      plan.md                           your notes, never shown
- 3 SLIDES    lecture.src.html ─build_page.py─▶ lecture.html ─▶ screenshots
- 4 SCRIPT    script.md ─▶ lint.py ─▶ cold-read review ─▶ fix ─▶ lint.py
- 5 DRY RUN   build_audio.py (Kokoro) ─▶ lint.py ─▶ open.py        THE RUN ENDS HERE
- 6 RECORD    build_audio.py --engine elevenlabs                   on request, once
+ 1 READ     extract.py ─▶ extract/         the text, the figures, the pages to look at
+ 2 PLAN     plan.md                        the teaching decisions, never shown
+ 3 SLIDES   lecture.src.html ─▶ lecture.html ─▶ screenshots · page_index.py --text
+ 4 SCRIPT   script.md ─▶ lint.py ─▶ cold-read review ─▶ fix ─▶ lint.py
+ 5 RECORD   build_audio.py ─▶ audio/ + cues/ ─▶ lint.py ─▶ open.py
 ```
 
-One shot from PDF to a dry-run lecture opened in the browser. Nothing is
-shown for approval on the way; the approval is the listening at the end,
-and what happens after it — notes, another dry run, the recording — the
-user says. Nothing is reported beyond one sentence if a piece of the
-chapter could not be used.
+One shot from PDF to a lecture opened in the browser, and `open.py` prints
+where the time went. Nothing is shown for approval on the way; the approval
+is the listening at the end, and what happens after it the user says.
+Nothing is reported beyond one sentence if a piece of the chapter could not
+be used.
+
+Each phase is stamped as it finishes (`scripts/stamp.py <outdir> <phase>`);
+`extract.py`, `build_audio.py` and `open.py` stamp their own.
 
 Vocabulary: a **part** is one tab with one audio file; a **frame** is one
 slide; a **beat** is one idea in the narration, starting at a frame; a
@@ -52,7 +54,8 @@ python3 scripts/extract.py <chapter.pdf> --out <outdir>/extract
 Read `extract/text.txt` in full and `extract/inventory.md`. Anything the
 inventory flags is read from the page render, not the text
 (`references/extraction.md`: what the text layer loses, and the figure
-inventory to keep while reading). Hand-correct `extract/outline.txt`.
+inventory to keep while reading). Hand-correct `extract/outline.txt`, then
+`stamp.py <outdir> read`.
 
 Then, for each idea in the chapter, answer what principle 2 asks: the
 trouble it exists for, and where the lecture will take that from — the
@@ -68,7 +71,7 @@ source; the chain of failure → rescue in order, with the example that
 carries each; where to stop, and which wrong answer is the lesson; the
 author's voice); every addition that is the lecture's and not the book's,
 with its source; what the chapter has that the lecture skips, and why.
-Then build from it.
+Then build from it, and `stamp.py <outdir> plan`.
 
 ### 3. Slides
 
@@ -94,31 +97,57 @@ Screenshot every part's first frame and the frames that matter
 (`chromium --headless --screenshot=shots/<part>-<frame>.png
 --window-size=1400,900 lecture.html#<part>:<frame>`) and look at them.
 Overflow, clipped labels, a slide that does not read at a glance are fixed
-now.
+now. Then
+
+```bash
+python3 scripts/page_index.py lecture.html --text > frames.txt
+python3 scripts/stamp.py <outdir> slides
+```
+
+`frames.txt` is every frame of every part as text — its label, everything
+written on it, and the mark ids it offers. **The script is written from that
+file**, so the words describe the run the slides actually computed rather
+than a second run in your head, and every mark you write is one that
+exists.
 
 ### 4. Script, then review
 
-Write `script.md` in the author's voice, against the frames
-(`references/narration-craft.md`). Lint it:
+Write `script.md` in the author's voice, from `frames.txt`
+(`references/narration-craft.md`). Then, in this order:
 
 ```bash
 python3 scripts/lint.py script.md lecture.html --out <outdir> --headings extract/outline.txt
 ```
 
-Then the **review** — the only step that can hear the lecture as a
-newcomer. Give a fresh agent (`general-purpose`) two reads in this order,
-and say why the order matters:
+**Verify what you asserted** — the two kinds of claim a reader cannot check
+for you, and a linter cannot either:
 
-1. **`script.md` alone, cold** — before it has seen the chapter. As a
-   listener: where could it not follow, where did it not want the idea
-   before the idea arrived, where was there nothing to predict?
-2. **Then `references/teaching.md`, `extract/text.txt`, `plan.md`**, and
-   the script again: where does it fail the goal or a principle, and where
-   does it say something the chapter (or a source the plan cites) does not?
+- *what the slides compute* — every number the voice says about a run
+  (which edge was taken, what a cell became, what the total is) against
+  `frames.txt`. Where the frames come from code, re-run that code and read
+  the answer off it; do not re-derive it in your head, which is how the
+  voice ends up narrating a different run than the screen draws.
+- *what the book says* — every page number, quotation, figure number and
+  attribution, by `grep` against `extract/text.txt`.
 
-Take the list it returns, whatever is on it; fix each item; lint again.
+Then the **review**, the one step that can hear the lecture as a newcomer,
+and the only thing here you cannot do yourself: you wrote the script, so
+you cannot notice that a term arrived unexplained or that a stretch gave
+the listener nothing to predict. Give a fresh agent (`general-purpose`)
+**`script.md` and nothing else** — no chapter, no plan, no slides, so the
+read stays a listener's read and stays fast — and one question:
 
-### 5. Dry run
+> You are hearing this lecture for the first time, having bought the book
+> but not read this chapter. Where does it lose you? Name every place you
+> could not follow, every term used before it meant anything, every part
+> where you did not want the idea before it arrived, every stretch with
+> nothing to predict, and every sentence that talks about the picture
+> instead of the thing.
+
+Take the list it returns, whatever is on it; fix each item; lint again;
+`stamp.py <outdir> script` and `stamp.py <outdir> review`.
+
+### 5. Record
 
 ```bash
 python3 scripts/build_audio.py script.md --out <outdir>
@@ -126,21 +155,26 @@ python3 scripts/lint.py script.md lecture.html --out <outdir> --headings extract
 python3 scripts/open.py lecture.html
 ```
 
-Each script's `--help` says what it writes. `open.py` prints how long the
-run took (from `run.log`) and opens the page. That is the end of the run.
-If `build_audio.py --check` fails, `references/kokoro.md` has the setup.
+Kokoro on the GPU: about a minute for a chapter, free, local, unlimited —
+this is how audio is made, every time. `open.py` prints the phase timings
+and opens the page. **That is the end of the run: the user listens.**
 
-### 6. Record — on request
+Afterwards, on their notes: change the words and rerun the same command
+(only the parts whose words changed are re-recorded); change only marks,
+asks or slides and `build_audio.py … --recue` re-times the cues from the
+existing recording without synthesising anything.
+
+Only when the user explicitly asks for the paid voice, and only once the
+words are final:
 
 ```bash
 python3 scripts/build_audio.py script.md --out <outdir> --engine elevenlabs [--voice <name|id>]
 ```
 
-Only when the user asks, and only once the words are final: the same
-script, the same cues, the paid voice (`references/elevenlabs.md`; with no
-key, stop and say so). Marks, asks and slide changes are cues, not speech:
-after editing them, `build_audio.py … --recue` re-times the cues from the
-existing recording instead of recording again.
+Nothing is rebuilt but the audio — same script, same cues, same page — and
+an ElevenLabs recording is never overwritten by a later Kokoro run.
+Setup, voices and quota: `references/elevenlabs.md`; with no key, stop and
+say so. If `build_audio.py --check` fails, `references/kokoro.md`.
 
 ## Output
 
@@ -151,7 +185,8 @@ existing recording instead of recording again.
 ├── script.md             author profile, glossary, outline, narration
 ├── audio/  cues/         what build_audio.py writes
 ├── shots/                screenshots from step 3
-├── run.log               the run's clock
+├── frames.txt            every frame as text — what the script is written from
+├── run.log               one line per phase; open.py prints the timings
 └── extract/
 ```
 
@@ -160,7 +195,7 @@ output first; never mix two builds' `audio/` and `cues/`.
 
 ## Delegating
 
-A subagent running the skill runs steps 1–5. The caller re-runs `lint.py`
+A subagent running the skill runs all five steps. The caller re-runs `lint.py`
 itself before trusting the result — agents get interrupted, and a clean
 lint is the evidence.
 

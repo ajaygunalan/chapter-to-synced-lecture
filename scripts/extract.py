@@ -181,7 +181,6 @@ def main():
                 "| file | page | size |", "|---|---|---|"]
         inv += [f"| images/{f.name} | {p} | {w}×{h} |" for f, p, w, h in images]
     (out / "inventory.md").write_text("\n".join(inv) + "\n")
-    stamp(out.parent, "extracted")
 
     print(f"{pdf.name}: {len(pages)} pages, {len(images)} images, {len(to_render)} renders, "
           f"{n_eq} numbered eqs, {len(heads)} heading candidates"

@@ -51,6 +51,12 @@ either changes; `mark` is the id of the last mark whose time has passed
 within the current beat, or `null` at the start of a beat. What "lit" means
 is the page's business; pages that ignore the second argument still work.
 
+Both of these — how many frames a part has, and which ids it draws — are
+decided by the page's own code at run time, so `scripts/page_index.py` asks
+the page rather than guessing: `lint.py` resolves every frame number and
+mark id in the script against it, and `--text` dumps every frame as readable
+text, which is what the script is written from.
+
 ## Cues
 
 `build_audio.py` writes `cues/<part>.json` per part and `cues/cues.js`,

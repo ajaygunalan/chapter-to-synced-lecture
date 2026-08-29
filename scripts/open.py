@@ -16,8 +16,8 @@ from lecture_format import run_summary, stamp
 
 def main():
     html = Path(sys.argv[1]).resolve()
-    stamp(html.parent, "opened")
-    print(run_summary(html.parent))
+    stamp(html.parent, "open")
+    print("\n" + run_summary(html.parent) + "\n")
     subprocess.Popen(["xdg-open", str(html)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 

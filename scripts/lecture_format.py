@@ -50,36 +50,51 @@ def cues_js_path(out):
     return out / "cues" / "cues.js"
 
 
-def stamp(out, what):
-    """Append '<time> <what>' to <out>/run.log. extract.py writes "started"; every
-    script writes its finish; open.py writes "opened" and reports the run's length."""
+# the run's phases, in order; each is stamped when it finishes (scripts/stamp.py)
+PHASES = ["read", "plan", "slides", "script", "review", "record", "open"]
+NOTE = {"read": "extract, then the chapter and its figures",
+        "plan": "the teaching decisions", "slides": "frames, render, screenshots",
+        "script": "the words, and the lint", "review": "cold read, and the fixes",
+        "record": "audio and cues", "open": ""}
+
+
+def stamp(out, what, detail=""):
+    """Append one line to <out>/run.log. extract.py opens the run with "started";
+    each phase is stamped as it finishes; open.py closes it and prints the summary."""
     out.mkdir(parents=True, exist_ok=True)
     with (out / "run.log").open("a") as f:
-        f.write(f"{datetime.now().replace(microsecond=0).isoformat()} {what}\n")
+        f.write(f"{datetime.now().replace(microsecond=0).isoformat()} {what}"
+                + (f" | {detail}" if detail else "") + "\n")
 
 
-STRETCH = {"extracted": "read", "page": "slides", "lint": "script", "audio": "audio", "opened": "open"}
+def _mmss(seconds):
+    return f"{int(seconds) // 60}:{int(seconds) % 60:02d}"
 
 
 def run_summary(out):
-    """'run: 47 min — read 3 · slides 14 · script 18 · audio 9 · open 0' from run.log,
-    each stretch named by the stamp that ends it, since the last "started"."""
+    """Every phase since the last "started", in order, with its duration and the
+    total from the chapter going in to the page opening."""
     log = out / "run.log"
     if not log.exists():
-        return "run: no run.log"
-    lines = [l.split(" ", 1) for l in log.read_text().splitlines() if " " in l]
-    starts = [i for i, (_, what) in enumerate(lines) if what == "started"]
+        return "no run.log"
+    rows = []
+    for line in log.read_text().splitlines():
+        t, _, rest = line.partition(" ")
+        what, _, detail = rest.partition(" | ")
+        if what:
+            rows.append((datetime.fromisoformat(t), what.strip(), detail.strip()))
+    starts = [i for i, r in enumerate(rows) if r[1] == "started"]
     if not starts:
-        return "run: no 'started' stamp in run.log"
-    run = [(datetime.fromisoformat(t), what) for t, what in lines[starts[-1]:]]
-    total = (run[-1][0] - run[0][0]).total_seconds() / 60
-    stretches, order = {}, []
-    for (t0, _), (t1, what) in zip(run, run[1:]):
-        name = STRETCH.get(what.split()[0], what)
-        if name not in stretches:
-            order.append(name)
-        stretches[name] = stretches.get(name, 0) + (t1 - t0).total_seconds() / 60
-    return f"run: {total:.0f} min — " + " · ".join(f"{n} {stretches[n]:.0f}" for n in order)
+        return "no 'started' stamp in run.log"
+    run = rows[starts[-1]:]
+    out_lines = []
+    for (t0, _, _), (t1, what, detail) in zip(run, run[1:]):
+        note = detail or NOTE.get(what, "")
+        out_lines.append(f"  {what:<8} {_mmss((t1 - t0).total_seconds()):>6}   {note}")
+    total = (run[-1][0] - run[0][0]).total_seconds()
+    out_lines.append(f"  {'─' * 8} {'─' * 6}")
+    out_lines.append(f"  {'total':<8} {_mmss(total):>6}   chapter in, lecture open")
+    return "\n".join(out_lines)
 
 
 def para_offsets(paragraphs):

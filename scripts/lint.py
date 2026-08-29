@@ -7,12 +7,17 @@ Nothing here judges the teaching; that is the review in SKILL.md step 4.
 
 - part keys match between `## part:` headings and `data-part` panels
 - beat ids are unique; beat start frames increase strictly within a part
+- EVERY REFERENCE THE SCRIPT MAKES RESOLVES against the built page: no frame
+  number past the end of that part's deck, and every mark id is something the
+  page actually draws on that frame (page_index.py runs the page to find out)
 - marks: a mark's frame is at or after its beat's frame and increases within
   the beat; a beat that covers several frames and names none of them by a
   mark is reported (the player would have to guess when to change slide)
 - every display block has a spoken form; prose never contains `$` or a
   maths glyph — those are what the glossary exists to replace
-- an `<!-- ask -->` follows a prose paragraph (the question the audio stops on)
+- an `<!-- ask -->` follows a prose paragraph, ends its beat, and the answer
+  that follows moves to a different frame — otherwise the listener is staring
+  at the answer while being asked to think
 - the header's outline block maps every section to a real part or `skip`;
   with --headings, every heading in that file appears in the outline
 - no two elements in the page share an id (a duplicate SVG marker or
@@ -28,8 +33,9 @@ import sys
 from collections import Counter
 from pathlib import Path
 
-from lecture_format import (COMMENT_RE, MATH_GLYPHS, audio_path, cue_path, duration_of, marks_in, stamp,
+from lecture_format import (COMMENT_RE, MATH_GLYPHS, audio_path, cue_path, duration_of, marks_in,
                             parse_outline, parse_parts, walk)
+from page_index import index as page_index
 
 GLYPH_RE = re.compile("[$" + MATH_GLYPHS + "]")
 def attr_re(name):                       # the attribute on a tag, not a JS selector string
@@ -60,6 +66,29 @@ def main():
         if n > 1:
             problems.append(f"{args.html.name}: id '{i}' appears {n} times — prefix ids with the part key")
 
+    deck = page_index(args.html)                 # what each part's frames actually offer
+    for k in parts.keys() & deck.keys():
+        if not deck[k]:
+            problems.append(f"part '{k}' draws no frames")
+
+    def resolve(k, where, frame, mark):
+        """Every frame number and mark id the script uses must exist on the page."""
+        frames = deck.get(k) or []
+        if frame is None or not frames:
+            return
+        if frame >= len(frames):
+            problems.append(f"{k}/{where}: frame {frame}, but the part has {len(frames)} (0–{len(frames) - 1})")
+            return
+        if mark is None:
+            return
+        f = frames[frame]
+        if mark in f["marks"]:
+            return
+        m = re.fullmatch(r"(row|line)-(\d+)", mark)         # positional marks: the Nth row or code line
+        if m and int(m.group(2)) <= f[{"row": "rows", "line": "lines"}[m.group(1)]]:
+            return
+        problems.append(f"{k}/{where}: mark '{mark}' lights nothing on frame {frame}")
+
     seen = set()
     for k, body in parts.items():
         ids, last_frame, n_q, n_m, prev = [], -1, 0, 0, None
@@ -76,19 +105,26 @@ def main():
                         problems.append(f"{k}/{beat['id']}: frame {beat['frame']} does not increase "
                                         f"(previous start {last_frame})")
                     last_frame = beat["frame"]
+                    resolve(k, beat["id"], last_frame, None)
+                asked = False
             mark_frame = last_frame
             frame_marks = 0
             for item in items:
                 if item[0] == "ask":
                     if prev != "prose":
                         problems.append(f"{k}: <!-- ask --> must follow the question's prose paragraph")
+                    asked = True
                     n_q += 1
                 elif item[0] == "display":
                     if item[2] is None:
                         problems.append(f"{k}: display block without spoken form: {item[1].strip()[:50]!r}")
                 else:
+                    if asked:
+                        problems.append(f"{k}/{beat['id'] if beat else '?'}: prose after <!-- ask --> in the same "
+                                        f"beat — the answer must start a new beat")
                     for m in marks_in(item[1]):
                         n_m += 1
+                        resolve(k, beat["id"] if beat else "?", m["frame"] if m["frame"] is not None else mark_frame, m["id"])
                         if m["frame"] is not None:
                             frame_marks += 1
                             if m["frame"] < mark_frame:
@@ -109,6 +145,18 @@ def main():
                 elif frame_marks and nxt is not None and mark_frame >= nxt:
                     problems.append(f"{k}/{beat['id']}: a mark names frame {mark_frame}, but the next beat "
                                     f"starts at {nxt}")
+        held = None
+        for i, (beat, items) in enumerate(walked):
+            if beat and beat["frame"] is not None:
+                held = beat["frame"]
+            if not any(it[0] == "ask" for it in items):
+                continue
+            nxt = next((b for b, _ in walked[i + 1:] if b), None)
+            answer = nxt["frame"] if nxt and nxt["frame"] is not None else held
+            if answer == held:
+                problems.append(f"{k}/{beat['id'] if beat else '?'}: the answer stays on frame {held}, the slide the "
+                                f"question is asked on — the listener is looking at the answer while thinking")
+
         if not ids:
             problems.append(f"part '{k}' has no beats")
         notes.append(f"{k}: {len(ids)} beats, {n_m} mark(s), {n_q} ask(s)")
@@ -144,7 +192,6 @@ def main():
     for p in problems:
         print(f"  ! {p}", file=sys.stderr)
     print(f"{len(parts)} parts, {len(seen)} beats, {len(problems)} problem(s)")
-    stamp(out, f"lint {len(problems)} problem(s)")
     sys.exit(1 if problems else 0)
 
 

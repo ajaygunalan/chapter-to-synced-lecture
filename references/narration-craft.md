@@ -139,8 +139,10 @@ that's safe…
   frame N -->` also changes the slide there. Ids are whatever the page's
   `render(frame, mark)` understands; frames named by marks increase within a
   beat.
-- `<!-- ask -->` right after the question's paragraph; the next paragraph is
-  the answer, which may open with the trap ("if you said…").
+- `<!-- ask -->` right after the question's paragraph, and it ENDS its beat:
+  the answer is the next beat, and that beat moves to a different frame.
+  Otherwise the audio stops with the answer already on the screen the
+  question was asked on. The answer may open with the trap ("if you said…").
 - `<!-- pause 2s -->` inside prose becomes silence (clamped to the limit in
   `lecture_format.py`).
 - `outline` maps every heading of `extract/outline.txt`, including the
