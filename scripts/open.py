@@ -15,6 +15,8 @@ from lecture_format import run_summary, stamp
 
 
 def main():
+    if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):
+        sys.exit(__doc__)
     html = Path(sys.argv[1]).resolve()
     stamp(html.parent, "open")
     print("\n" + run_summary(html.parent) + "\n")

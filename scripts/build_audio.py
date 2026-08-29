@@ -11,10 +11,12 @@ the engine's per-word alignment (engines: scripts/engines/).
     build_audio.py --check [--engine E]                         # what the engine can do right now
     --voice NAME|ID  --part KEY  --force  ; --engine E --help lists E's own options
 
-Parts that already have audio are skipped, so an interruption resumes with
-the same command; --force (or --part) rebuilds. A part recorded by an
-engine marked FINAL (a paid voice) is never replaced by another engine's
-run unless forced. Script format:
+A part is re-recorded when its words have changed and skipped when they
+have not, so an interruption resumes with the same command and so does an
+edit; --force (or --part) rebuilds regardless. A part recorded by an engine
+marked FINAL (a paid voice) is never replaced automatically — not by
+another engine, and not by an edit; it says so and leaves it alone.
+Script format:
 references/narration-craft.md; engines: references/kokoro.md,
 references/elevenlabs.md.
 """
@@ -198,10 +200,16 @@ def main():
             continue
         if recorded and not rebuild:
             old = json.loads(cf.read_text()).get("engine", engines.LEGACY)
-            if old == args.engine or engines.load(old).FINAL:
+            stale = text != tf.read_text()                      # the words moved on since it was recorded
+            if stale and engines.load(old).FINAL:
+                warn(f"the words changed since the {old} recording, which is not replaced automatically — "
+                     f"re-record it with --part {key} when you mean to spend the credits")
+                ok = False
+                continue
+            if not stale and (old == args.engine or engines.load(old).FINAL):
                 print(f"    already built by {old}; skipping (--force to redo)")
                 continue
-            print(f"    built by {old}; rebuilding with {args.engine}")
+            print(f"    {'the words changed' if stale else f'built by {old}'}; recording with {args.engine}")
 
         tmp = Path(tempfile.mkdtemp(prefix=f"tts-{key}-"))
         try:

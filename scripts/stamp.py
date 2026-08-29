@@ -18,7 +18,7 @@ from lecture_format import PHASES, stamp
 
 
 def main():
-    if len(sys.argv) < 3:
+    if len(sys.argv) < 3 or sys.argv[1] in ("-h", "--help"):
         sys.exit(__doc__)
     out, phase, detail = Path(sys.argv[1]), sys.argv[2], " ".join(sys.argv[3:])
     if phase not in PHASES:

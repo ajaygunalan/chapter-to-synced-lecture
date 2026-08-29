@@ -117,6 +117,7 @@ Write `script.md` in the author's voice, from `frames.txt`
 
 ```bash
 python3 scripts/lint.py script.md lecture.html --out <outdir> --headings extract/outline.txt
+python3 scripts/stamp.py <outdir> script
 ```
 
 **Verify what you asserted** — the two kinds of claim a reader cannot check
@@ -145,7 +146,7 @@ read stays a listener's read and stays fast — and one question:
 > instead of the thing.
 
 Take the list it returns, whatever is on it; fix each item; lint again;
-`stamp.py <outdir> script` and `stamp.py <outdir> review`.
+`stamp.py <outdir> review`.
 
 ### 5. Record
 
@@ -159,10 +160,11 @@ Kokoro on the GPU: about a minute for a chapter, free, local, unlimited —
 this is how audio is made, every time. `open.py` prints the phase timings
 and opens the page. **That is the end of the run: the user listens.**
 
-Afterwards, on their notes: change the words and rerun the same command
-(only the parts whose words changed are re-recorded); change only marks,
-asks or slides and `build_audio.py … --recue` re-times the cues from the
-existing recording without synthesising anything.
+Afterwards, on their notes: change the words and rerun the same command —
+each part is re-recorded only if its words changed, so this costs a few
+seconds; change only marks, asks or slides and `build_audio.py … --recue`
+re-times the cues from the existing recording without synthesising
+anything.
 
 Only when the user explicitly asks for the paid voice, and only once the
 words are final:

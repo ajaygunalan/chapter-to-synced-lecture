@@ -1,6 +1,6 @@
 # ElevenLabs
 
-The paid voice — `build_audio.py --engine elevenlabs` (SKILL.md step 6).
+The paid voice — `build_audio.py --engine elevenlabs` (SKILL.md step 5, the optional final pass).
 What `scripts/engines/elevenlabs.py` assumes about the API. Endpoint
 reference:
 https://elevenlabs.io/docs/api-reference/text-to-speech/convert-with-timestamps

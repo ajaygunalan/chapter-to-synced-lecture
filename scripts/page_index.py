@@ -89,7 +89,7 @@ def index(html):
 
 
 def main():
-    if len(sys.argv) < 2:
+    if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):
         sys.exit(__doc__)
     data = index(sys.argv[1])
     if "--text" in sys.argv:
