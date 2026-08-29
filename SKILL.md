@@ -36,8 +36,9 @@ prints where the time went. Nothing is shown for approval on the way; the
 approval is the listening at the end. Nothing is reported beyond one sentence
 if a piece of the chapter could not be used.
 
-A revision is the opposite in every respect: nothing runs until the listener
-asks for it, and only what they asked about is rebuilt.
+A revision is the opposite in every respect: the session is a conversation,
+nothing is edited while it runs, and only what the listener approved at the
+end is rebuilt.
 
 Each phase is stamped as it finishes (`scripts/stamp.py <outdir> <phase>`);
 `extract.py`, `build_audio.py` and `open.py` stamp their own.
@@ -58,7 +59,9 @@ The PDF is the address of its own lecture: the output always sits at
   built and you are ready for questions — the listener has been listening
   and arrives with a doubt, not a menu choice. Never put up a pick-a-part
   prompt: work out which part the question is about from the outline in the
-  script's header, read that part, and answer. Then "Revising", below.
+  script's header, read that part, and answer. **Do not touch the lecture**
+  — not `script.md`, not `lecture.src.html`, not the audio — until the
+  listener says, at the end, to edit. Then "Revising", below.
 
 Reading a part means reading its words and its slides *as text*: that part of
 `script.md`, and that part in `frames.txt`. The audio and the page are for
@@ -235,10 +238,18 @@ self-contained — one stretch of `script.md`, one `audio/<part>.mp3`, one
 part, and that part's frames. Not the whole lecture: ten parts sit
 comfortably in ten separate sessions.
 
-**Teach before editing.** When the note is "I didn't follow this", explain it
-in the chat and let the listener say when it lands. Only then is it clear
-which sentence was at fault. Edit first and you are guessing at what confused
-them.
+**The session is discussion; the edits come last, on the word "edit".**
+The listener goes through the lecture tab by tab and brings each doubt to
+the chat. Teach it there — explain, let them say when it lands, work out
+together which sentence was at fault. While that runs, nothing in the
+lecture directory changes: not a word of `script.md`, not a slide, not a
+second of audio. Keep the running list of what should change in
+`<outdir>/notes.md` — the doubt, what landed, the sentence or slide to fix —
+so nothing is lost across a long session or a summarised context. The
+edits happen only when the listener explicitly says to make them, normally
+at the very end of the session, and only the items on the list they
+approved. Edit mid-conversation and you are guessing at what confused them,
+and re-recording a part they are still listening to.
 
 | what changed | command | cost |
 |---|---|---|
