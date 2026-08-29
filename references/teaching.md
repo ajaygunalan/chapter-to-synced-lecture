@@ -90,8 +90,18 @@ the drawings were made, what is staged, how the audio is synced; the header
 is the book, the chapter, the author. Not in the voice — no "in this
 lecture", "this part", "on the slide", "the chapter doesn't say"; the sources
 live in the plan, the voice just says the thing. The one pointer outward is
-to the book: page and figure numbers on each part, because that is where the
-listener goes next.
+to the book — page and figure numbers — and it is **written** on each part's
+pointer line, never spoken: "that's Figure 6.2 on page 194" is a librarian
+interrupting a teacher. The single exception is a correction: when the
+lecture says the book is wrong, the voice gives the page, so the listener can
+check who is right (principle 5).
+
+**The lecture depends on nothing but itself.** It never says "as we saw in
+Chapter 1" and moves on: if an idea needs the earlier chapter's example, it
+shows that example, right there, in a few sentences — then it may add where
+the fuller telling lives. A reference is a pointer the listener may follow
+afterwards; it is never a prerequisite they were supposed to bring. The
+listener bought the book; they did not necessarily read it in order.
 
 **No numbers as rules.** "In one sentence", "within the first minute" — the
 principle is the constraint; the only numbers in the skill are real limits of

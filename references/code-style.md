@@ -36,6 +36,9 @@ Style, the same in every chapter:
 - `//` comments above the line, lowercase, only where the invariant is not
   obvious — one *why*, never a label of what the line does
 - whitespace between phases, not between every line
+- no `#include` lines and no `using namespace`: a slide shows the algorithm,
+  not the file; the headers are implied by the names (`std::vector`,
+  `std::println`)
 - lines short enough to sit beside a picture — about 55 characters
 
 Compiling locally: GCC 13 ships no `<print>`; build with a shim

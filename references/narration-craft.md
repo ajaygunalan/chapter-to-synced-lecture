@@ -66,6 +66,8 @@ the chapter in front of you.
 | "Total cost is Σ c(i), O(n log n) with a heap." | "Add up what you kept. With the right structure, the whole thing runs in n log n." |
 | naming the method, then defining it | "Obvious plan: grab the smallest one anywhere. Feels right? Watch it strand you…" |
 | dropping the author's aside | keeping it whole, in his voice — or cutting it whole. Never flattened into a claim. |
+| "That's Figure 6.2, on page 194." | nothing — the page and figure are written under the tab. Spoken only to say where the book is wrong. |
+| "We watched greedy fail back in Chapter 1." | "Four towns in a row. Nearest-first zigzags and pays the long leg home; the straight route is shorter." — shown, then, if useful, "Chapter 1 opens with it." |
 
 ## Display blocks and spoken forms
 

@@ -37,6 +37,9 @@ from page_index import index as page_index
 
 GLYPH_RE = re.compile("[$" + MATH_GLYPHS + "]")
 PANEL_RE = re.compile(r'<\w+[^>]*\sdata-part="([^"]+)"')
+# spoken pointers into the book: written under the tab, never in the voice (teaching.md, "Not doing")
+CITE_RE = re.compile(r"\b(?:pages?|pp?\.)\s*(\d+)|\b(?:Figures?|Chapters?|Sections?)\s+\d", re.I)
+CORRECTIONS_RE = re.compile(r"<!--\s*corrections:(.*?)-->", re.S)
 
 
 def main():
@@ -50,6 +53,10 @@ def main():
 
     problems, notes = [], []
     header, parts = parse_parts(args.script.read_text())
+    # a page the header's corrections block names may be spoken: the listener must be able to check
+    corrected = set()
+    for block in CORRECTIONS_RE.findall(header):
+        corrected.update(re.findall(r"p\.\s*(\d+)", block))
     page = args.html.read_text()
     panels = set(PANEL_RE.findall(page))
     for k in parts.keys() - panels:
@@ -133,7 +140,13 @@ def main():
                                 problems.append(f"{k}/{bid}: mark '{m['id']}' frame "
                                                 f"{m['frame']} is before the current frame {mark_frame}")
                             mark_frame = max(mark_frame, m["frame"])
-                    bad = sorted(set(GLYPH_RE.findall(COMMENT_RE.sub("", item[1]))))
+                    spoken = COMMENT_RE.sub("", item[1])
+                    for c in CITE_RE.finditer(spoken):
+                        if c.group(1) and c.group(1) in corrected:
+                            continue
+                        problems.append(f"{k}/{bid}: '{c.group(0)}' spoken — page and figure numbers are written "
+                                        f"under the tab, not said (unless correcting the book): {spoken.strip()[:50]!r}")
+                    bad = sorted(set(GLYPH_RE.findall(spoken)))
                     if bad:
                         problems.append(f"{k}: {' '.join(bad)} in prose — say it in words (glossary) or move it "
                                         f"to a display block: {item[1].strip()[:50]!r}")
