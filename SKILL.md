@@ -54,9 +54,11 @@ The PDF is the address of its own lecture: the output always sits at
 
 - **No such directory** — build it: the five steps below.
 - **It is there** — do not rebuild, and do not re-read the chapter. Read
-  `run.log` and `script.md`'s header; say what exists — the parts, when each
-  was recorded, by which engine — and ask which part to work on. Then
-  "Revising", below.
+  `run.log` and `script.md`'s header, then say in a line that the lecture is
+  built and you are ready for questions — the listener has been listening
+  and arrives with a doubt, not a menu choice. Never put up a pick-a-part
+  prompt: work out which part the question is about from the outline in the
+  script's header, read that part, and answer. Then "Revising", below.
 
 Reading a part means reading its words and its slides *as text*: that part of
 `script.md`, and that part in `frames.txt`. The audio and the page are for
