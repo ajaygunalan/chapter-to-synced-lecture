@@ -189,11 +189,7 @@ Kokoro on the GPU: about a minute for a chapter, free, local, unlimited —
 this is how audio is made, every time. `open.py` prints the phase timings
 and opens the page. **That is the end of the run: the user listens.**
 
-Afterwards, on their notes: change the words and rerun the same command —
-each part is re-recorded only if its words changed, so this costs a few
-seconds; change only marks, asks or slides and `build_audio.py … --recue`
-re-times the cues from the existing recording without synthesising
-anything.
+What comes back from that listening is "Revising", below.
 
 Only when the user explicitly asks for the paid voice, and only once the
 words are final:
