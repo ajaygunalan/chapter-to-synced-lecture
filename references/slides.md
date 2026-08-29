@@ -68,9 +68,11 @@ pre.innerHTML = lines.map(function (l, i) {
 Build the listing once; a mark on a line (`line-27`) toggles `.line.lit` in
 `render`, so a listing can sit on screen whole while the voice walks it.
 
-The book's own code stays exactly as the book prints it, in the book's own
-language. Code the lecture writes is as small as still shows the failure, in
-that same language.
+Code on a slide is C++23 in the house style (`code-style.md`), whatever the
+book prints: the book's listing cited by page, the rewrite named as the
+lecture's, a `main` that shows what goes in and what comes out, and the
+picture beside the code when the code runs on one. Code the lecture writes
+to stage a failure is as small as still shows it.
 
 Either way it is code on a slide, not code in a file — read at a glance, from
 across a room, once. So:

@@ -111,7 +111,9 @@ Then build from it, and `stamp.py <outdir> plan`.
 ### 3. Slides
 
 `references/slides.md` decides what each stretch becomes and what a frame
-holds; `references/sync-architecture.md` is the page contract.
+holds; `references/code-style.md` is how code looks on a slide (C++23, a
+`main`, the picture beside it); `references/sync-architecture.md` is the
+page contract.
 
 **Look first.** Load the `frontend-design` skill (Skill tool) and commit
 to one look for this chapter before writing markup — one that belongs to
