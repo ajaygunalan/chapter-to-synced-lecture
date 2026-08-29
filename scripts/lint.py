@@ -141,9 +141,10 @@ def main():
                                                 f"{m['frame']} is before the current frame {mark_frame}")
                             mark_frame = max(mark_frame, m["frame"])
                     spoken = COMMENT_RE.sub("", item[1])
-                    for c in CITE_RE.finditer(spoken):
-                        if c.group(1) and c.group(1) in corrected:
-                            continue
+                    cites = list(CITE_RE.finditer(spoken))
+                    if any(c.group(1) in corrected for c in cites if c.group(1)):
+                        cites = []                      # correcting the book: the page, and its figure, may be said
+                    for c in cites:
                         problems.append(f"{k}/{bid}: '{c.group(0)}' spoken — page and figure numbers are written "
                                         f"under the tab, not said (unless correcting the book): {spoken.strip()[:50]!r}")
                     bad = sorted(set(GLYPH_RE.findall(spoken)))
