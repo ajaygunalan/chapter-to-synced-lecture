@@ -35,6 +35,12 @@ def main():
 
     page = args.src.read_text()
     page = re.sub(r"<script>(\s*)\{\{PLAYER_JS\}\}", CUES_TAG + r"\n<script>\1{{PLAYER_JS}}", page, count=1)
+    for token in ("{{PLAYER_CSS}}", "{{PLAYER_JS}}"):
+        if token not in page:
+            sys.exit(f"{args.src.name}: no {token} placeholder — the page would ship without the "
+                     f"player (build_page.py --help lists the placeholders)")
+    if CUES_TAG not in page:
+        print("  note: no cues tag inserted — the page will be a manual stepper with no audio")
     page = page.replace("{{PLAYER_CSS}}", (ASSETS / "player.css").read_text())
     page = page.replace("{{PLAYER_JS}}", (ASSETS / "player.js").read_text())
 

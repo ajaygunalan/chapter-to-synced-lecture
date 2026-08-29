@@ -81,7 +81,9 @@ holds; `references/sync-architecture.md` is the page contract.
 **Look first.** Load the `frontend-design` skill (Skill tool) and commit
 to one look for this chapter before writing markup — one that belongs to
 this book, not the previous lecture's. Restyle through the player's tokens
-(`sync-architecture.md`, "The page").
+(`sync-architecture.md`, "The page"). `player.css` part 3 already carries the
+geometry — `.board` holding a `.fig` beside a `.side`, either one `.wide` to
+take the slide alone — so the effort goes into the look, not the plumbing.
 
 Draft each part's frames and beats together — the list of beats, each with
 the frame it starts on, is the plan for both — with an id for every thing
@@ -93,11 +95,20 @@ the voice will name (`slides.md`, "What a frame is"). Author
 python3 scripts/build_page.py lecture.src.html -o lecture.html
 ```
 
-Screenshot every part's first frame and the frames that matter
-(`chromium --headless --screenshot=shots/<part>-<frame>.png
---window-size=1400,900 lecture.html#<part>:<frame>`) and look at them.
-Overflow, clipped labels, a slide that does not read at a glance are fixed
-now. Then
+Screenshot every part's first frame and the frames that matter, and **look
+at them** — the URL must be absolute, or the browser photographs its own
+error page and every shot comes out the same plausible size:
+
+```bash
+for f in prim:0 prim:8 kruskal:0 …; do p=${f%%:*}; n=${f##*:}
+  chromium --headless --window-size=1500,1100 --virtual-time-budget=3000 \
+    --screenshot="$PWD/shots/$p-$n.png" "file://$PWD/lecture.html#$f" &
+done; wait
+```
+
+The linter checks consistency, never legibility; this is the only step that
+looks. Overflow, clipped labels, collided text, a drawing that does not read
+at a glance: fixed now. Then
 
 ```bash
 python3 scripts/page_index.py lecture.html --text > frames.txt
@@ -144,6 +155,9 @@ read stays a listener's read and stays fast — and one question:
 > where you did not want the idea before it arrived, every stretch with
 > nothing to predict, and every sentence that talks about the picture
 > instead of the thing.
+>
+> Then: anything that contradicts something said earlier, or argues for a
+> different rule than the one being taught.
 
 Take the list it returns, whatever is on it; fix each item; lint again;
 `stamp.py <outdir> review`.
@@ -173,8 +187,9 @@ words are final:
 python3 scripts/build_audio.py script.md --out <outdir> --engine elevenlabs [--voice <name|id>]
 ```
 
-Nothing is rebuilt but the audio — same script, same cues, same page — and
-an ElevenLabs recording is never overwritten by a later Kokoro run.
+Nothing is rebuilt but the audio — same script, same cues, same page — and a
+paid recording is never overwritten by a later free one (`build_audio.py
+--help`).
 Setup, voices and quota: `references/elevenlabs.md`; with no key, stop and
 say so. If `build_audio.py --check` fails, `references/kokoro.md`.
 

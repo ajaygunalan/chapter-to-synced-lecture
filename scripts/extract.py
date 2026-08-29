@@ -19,10 +19,11 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
-from lecture_format import stamp
+from lecture_format import MATH_GLYPHS, stamp
 
 LOSSY_RE = re.compile("[\ue000-\uf8ff\u2400-\u243f\u4e00-\u9fff\ufffd]")   # private-use, control pictures, CJK, U+FFFD in a Latin book
-MATH_HINT_RE = re.compile(r"[=≠≈≤≥∑∏∫∞∂∇√∧∨⌋⌊⌈⌉⊂⊆∈∀∃→↦⊗⊕αβγδεθλμπρσφψω]|\b[a-zA-Z]\^")
+MATH_HINT_RE = re.compile("[" + MATH_GLYPHS + "⌈⌉⊂⊆∪∩∅±×÷≡∼⟨⟩‖⇒⇔′αβγδεθλμνπρστφχψω]"
+                          r"|\b[a-zA-Z]\^|\b[a-zA-Z]_\d")   # a bare "=" is not maths
 NUMBERED_EQ_RE = re.compile(r"\((\d+\.\d+[a-z]?)\)\s*$", re.M)
 FIGURE_RE = re.compile(r"^\s*(?:Figure|Fig\.)\s+(\d+(?:\.\d+)*)", re.M | re.I)
 LETTERSPACED_RE = re.compile(r"\b(?:[A-Za-z] ){3,}[A-Za-z]\b")   # "F i g u r e" -> "Figure"
@@ -94,7 +95,7 @@ def analyse(text, n_images):
     if FIGURE_RE.search(text):
         flags.append("figure caption")
     if sum(1 for l in lines if CODE_LINE_RE.match(l)) >= 6:
-        flags.append("code listing")
+        flags.append("code listing")      # noted, not rendered: -layout keeps the indentation
     return flags
 
 
@@ -157,7 +158,9 @@ def main():
             per_page[p] += 1
 
     flags = {p: analyse(t, per_page[p]) for p, t in enumerate(pages, 1)}
-    to_render = [p for p in flags if args.all_pages or flags[p]]
+    # what the text layer really loses is figures and maths, not code or tables
+    WORTH_A_LOOK = {"raster image", "numbered equation", "maths", "lossy glyphs", "figure caption"}
+    to_render = [p for p in flags if args.all_pages or (WORTH_A_LOOK & set(flags[p]))]
     render_pages(pdf, to_render, out / "pages", args.dpi)
 
     by_flag = defaultdict(list)

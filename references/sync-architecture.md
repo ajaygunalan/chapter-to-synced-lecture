@@ -10,8 +10,8 @@ A part's slides are an array of **frames** — snapshots the page can draw,
 one canvas each. `player.js` treats them as opaque — only the page's
 `render` looks inside — and reads two optional keys:
 
-- `label` — the name shown on the ribbon tick and counter ("Facade", "apply
-  the rotor"); default "Step n"
+- `label` — the name shown on the ribbon tick and counter ("take item 3",
+  "the swap"); default "Step n"
 - `tone` — `good` | `bad` | `mark` | `end`, colours the ribbon tick only;
   `render` colours the drawing itself
 
@@ -22,9 +22,9 @@ box, reveal the next derivation line, fill a table row). Either way each
 frame is drawable from the object alone:
 
 ```js
-{ label: 'accept e3', tone: 'good', tree: [...], dist: {...} }       // computed
-{ label: 'Facade', show: ['Employee', 'Facade'], highlight: ['e1'] }  // authored
-{ label: 'expand', eq: 'eq-13-4', lines: 3, mark: 'term-2' }         // derivation
+{ label: 'take item 3', tone: 'good', kept: [...], totals: {...} }   // computed
+{ label: 'version 2', show: ['a', 'b'], highlight: ['b'] }            // authored
+{ label: 'expand', eq: 'eq-2', lines: 3, mark: 'term-2' }             // derivation
 ```
 
 A voice-only stretch is a part with one frame. An interactive explorer
@@ -50,6 +50,11 @@ may also change the frame. The player calls `render(frame, mark)` whenever
 either changes; `mark` is the id of the last mark whose time has passed
 within the current beat, or `null` at the start of a beat. What "lit" means
 is the page's business; pages that ignore the second argument still work.
+
+A thing the voice can name carries `data-mark="<id>"`: that attribute is how
+`page_index.py` finds the ids a frame offers, and how `lint.py` checks every
+mark in the script against them. A line of a listing may be named `line-N`
+instead, counted down `pre.code .line`.
 
 Both of these — how many frames a part has, and which ids it draws — are
 decided by the page's own code at run time, so `scripts/page_index.py` asks
@@ -83,9 +88,20 @@ picture's place; in fullscreen it is hidden with the controls.
 
 ```js
 createLecture({
-  parts: [ { key: 'prim', name: 'Prim', frames: [...], render: fn(frame, mark) }, … ]
+  parts: [ { key: 'alpha', name: 'The first idea', frames: [...], render: fn(frame, mark) }, … ]
 }) -> { players: {key: player}, activate(key, frame?), fullscreen(on) }
 ```
+
+`render(frame, mark)` may work either way, and the player accepts both:
+
+- **return the markup** as a string, and the player writes it into a
+  `.board-host` inside that part's `.slide` — the shorter road, and what
+  `player.css` part 3 is laid out for;
+- **or draw into the DOM yourself** and return nothing — for a canvas, a
+  D3 selection, an explorer that keeps its own state between frames.
+
+Either way `render` only ever draws the state it is handed; the clock is
+`audio.currentTime` and nothing animates on its own schedule.
 
 The page supplies, per part, one `<section data-part="key">` holding a
 `.slide` (the canvas; the player draws the slide number bottom-left and the
@@ -119,5 +135,5 @@ slides").
 
 One module per voice engine in `scripts/engines/`, with the contract in
 `scripts/engines/__init__.py`; every engine writes the same
-`cues/*.align.json`. Which engine is used when is SKILL.md steps 5–6;
+`cues/*.align.json`. Which engine is used when is SKILL.md step 5;
 setup is `kokoro.md` and `elevenlabs.md`.

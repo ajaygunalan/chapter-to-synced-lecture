@@ -14,14 +14,12 @@ Nothing here judges the teaching; that is the review in SKILL.md step 4.
   the beat; a beat that covers several frames and names none of them by a
   mark is reported (the player would have to guess when to change slide)
 - every display block has a spoken form; prose never contains `$` or a
-  maths glyph — those are what the glossary exists to replace
+  maths glyph (narration-craft.md, "Display blocks and spoken forms")
 - an `<!-- ask -->` follows a prose paragraph, ends its beat, and the answer
-  that follows moves to a different frame — otherwise the listener is staring
-  at the answer while being asked to think
+  moves to a different frame (narration-craft.md, "Script format")
 - the header's outline block maps every section to a real part or `skip`;
   with --headings, every heading in that file appears in the outline
-- no two elements in the page share an id (a duplicate SVG marker or
-  gradient id makes arrowheads vanish silently)
+- no two elements share an id on any drawn frame
 - with cues: beat ids match the script and the last cue ends within 2 s of
   the audio file's length
 """
@@ -38,11 +36,7 @@ from lecture_format import (COMMENT_RE, MATH_GLYPHS, audio_path, cue_path, durat
 from page_index import index as page_index
 
 GLYPH_RE = re.compile("[$" + MATH_GLYPHS + "]")
-def attr_re(name):                       # the attribute on a tag, not a JS selector string
-    return re.compile(r'<\w+[^>]*\s' + name + r'="([^"]+)"')
-
-
-PANEL_RE, ID_RE = attr_re("data-part"), attr_re("id")
+PANEL_RE = re.compile(r'<\w+[^>]*\sdata-part="([^"]+)"')
 
 
 def main():
@@ -62,11 +56,14 @@ def main():
         problems.append(f"part '{k}' has no data-part panel in {args.html.name}")
     for k in panels - parts.keys():
         problems.append(f"panel '{k}' in {args.html.name} has no part in the script")
-    for i, n in Counter(ID_RE.findall(page)).items():
-        if n > 1:
-            problems.append(f"{args.html.name}: id '{i}' appears {n} times — prefix ids with the part key")
-
     deck = page_index(args.html)                 # what each part's frames actually offer
+    for k, frames in deck.items():               # ids as the browser sees them, per drawn frame
+        for i, f in enumerate(frames):
+            for dup, n in Counter(f.get("ids", [])).items():
+                if n > 1:
+                    problems.append(f"{k}/frame {i}: id '{dup}' appears {n} times — prefix ids "
+                                    f"with the part key, or an SVG marker or gradient silently "
+                                    f"points at the wrong one")
     for k in parts.keys() & deck.keys():
         if not deck[k]:
             problems.append(f"part '{k}' draws no frames")
@@ -84,14 +81,16 @@ def main():
         f = frames[frame]
         if mark in f["marks"]:
             return
-        m = re.fullmatch(r"(row|line)-(\d+)", mark)         # positional marks: the Nth row or code line
-        if m and int(m.group(2)) <= f[{"row": "rows", "line": "lines"}[m.group(1)]]:
+        m = re.fullmatch(r"line-(\d+)", mark)               # the Nth line of a listing
+        if m and int(m.group(1)) <= f["lines"]:
             return
         problems.append(f"{k}/{where}: mark '{mark}' lights nothing on frame {frame}")
 
     seen = set()
     for k, body in parts.items():
         ids, last_frame, n_q, n_m, prev = [], -1, 0, 0, None
+        bid = "?"
+
         walked = walk(body)
         beat_starts = [b["frame"] for b, _ in walked if b and b["frame"] is not None]
         for beat, items in walked:
@@ -100,6 +99,7 @@ def main():
                     problems.append(f"duplicate beat id '{beat['id']}'")
                 seen.add(beat["id"])
                 ids.append(beat["id"])
+                bid = beat["id"]
                 if beat["frame"] is not None:
                     if beat["frame"] <= last_frame:
                         problems.append(f"{k}/{beat['id']}: frame {beat['frame']} does not increase "
@@ -117,18 +117,20 @@ def main():
                     n_q += 1
                 elif item[0] == "display":
                     if item[2] is None:
-                        problems.append(f"{k}: display block without spoken form: {item[1].strip()[:50]!r}")
+                        problems.append(f"{k}: this will not be spoken — it reads as a display block, not prose. "
+                                    f"Give it a <!-- spoken: … --> form, or reword it to open with a word: "
+                                    f"{item[1].strip()[:50]!r}")
                 else:
                     if asked:
-                        problems.append(f"{k}/{beat['id'] if beat else '?'}: prose after <!-- ask --> in the same "
+                        problems.append(f"{k}/{bid}: prose after <!-- ask --> in the same "
                                         f"beat — the answer must start a new beat")
                     for m in marks_in(item[1]):
                         n_m += 1
-                        resolve(k, beat["id"] if beat else "?", m["frame"] if m["frame"] is not None else mark_frame, m["id"])
+                        resolve(k, bid, m["frame"] if m["frame"] is not None else mark_frame, m["id"])
                         if m["frame"] is not None:
                             frame_marks += 1
                             if m["frame"] < mark_frame:
-                                problems.append(f"{k}/{beat['id'] if beat else '?'}: mark '{m['id']}' frame "
+                                problems.append(f"{k}/{bid}: mark '{m['id']}' frame "
                                                 f"{m['frame']} is before the current frame {mark_frame}")
                             mark_frame = max(mark_frame, m["frame"])
                     bad = sorted(set(GLYPH_RE.findall(COMMENT_RE.sub("", item[1]))))
@@ -153,7 +155,7 @@ def main():
                 continue
             nxt = next((b for b, _ in walked[i + 1:] if b), None)
             answer = nxt["frame"] if nxt and nxt["frame"] is not None else held
-            if answer == held:
+            if answer == held and len(deck.get(k) or []) > 1:
                 problems.append(f"{k}/{beat['id'] if beat else '?'}: the answer stays on frame {held}, the slide the "
                                 f"question is asked on — the listener is looking at the answer while thinking")
 

@@ -2,7 +2,7 @@
 """
 The last step of a run: open.py lecture.html
 
-Stamps "opened" into <outdir>/run.log (every script of the run stamped its
+Stamps "open" into <outdir>/run.log (every script of the run stamped its
 own finish there; extract.py stamped "started"), prints how long the run
 took — in total and per stretch — and opens the page in the browser.
 """

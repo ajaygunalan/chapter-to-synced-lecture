@@ -33,20 +33,16 @@ a memory or an opinion that isn't in the chapter, and no one else's voice
 narrates.
 
 **2. Before an idea is explained, the listener must want it.** Every idea was
-invented because something failed without it. The trouble is that failure,
-made concrete: a real situation where the obvious approach goes wrong, tried
-on a real case and watched to break. Put the listener inside it before the
-idea; let them guess a way out; give the idea as the way out and show why it
-holds; say what they can now do; move to the next trouble. By the time the
-idea arrives they know what is being built and what it is for, and its name
-has been said and explained in plain words, with the book's picture if there
-is one; the book's formal form — notation, code, statement — comes after
-that. A part that opens with the previous chapter, a struct, or a definition
-with no reason behind it has skipped the problem. Take the trouble from the
-book's own applications, stories and exercises where it has them; where the
-book's opening has none, take it from history — the problem the idea was
+invented because something failed without it. Put the listener inside that
+failure — the obvious approach, tried on a real case, watched to break — let
+them guess a way out, then give the idea as the way out. Its plain-words name
+first, the book's notation or code after.
+
+Take the trouble from the book's own applications, stories and exercises;
+where its opening has none, take it from history — the problem the idea was
 made for — searched for and recorded in the plan. A staged example is the
-stage on which a real trouble is shown, never a trouble by itself.
+stage a real trouble is shown on, never a trouble by itself. A part that
+opens with the previous chapter, a struct, or a definition has skipped it.
 
 **3. Ask before telling.** Wherever the listener can form an expectation
 before the reveal and the answer is not mechanical, stop and ask: the

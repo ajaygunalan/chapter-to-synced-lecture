@@ -4,11 +4,14 @@
 function createSyncedPlayer(o) {
   function nonEmpty(a) { return a && a.length ? a : null; }
   function byT(a, b) { return a.t - b.t; }
-  function lastAt(arr, t) {            // index of the last element with .t <= t
+  function timeOf(x) { return x.t; }
+  function lastAt(arr, t, at) {        // index of the last element at or before t
+    at = at || timeOf;
     var lo = 0, hi = arr.length - 1;
-    while (lo < hi) { var mid = (lo + hi + 1) >> 1; if (arr[mid].t <= t) lo = mid; else hi = mid - 1; }
+    while (lo < hi) { var mid = (lo + hi + 1) >> 1; if (at(arr[mid]) <= t) lo = mid; else hi = mid - 1; }
     return lo;
   }
+  function wordTime(w) { return w[0]; }        // subtitle words are [t, text] pairs
   var frames = nonEmpty(o.frames) || [{}],
       audio  = o.audio || null,
       beats  = audio ? nonEmpty(o.beats) : null,
@@ -113,6 +116,21 @@ function createSyncedPlayer(o) {
   o.mount.appendChild(counter);
   if (single && !audio) { prev.hidden = next.hidden = again.hidden = play.hidden = true; counter.textContent = 'no narration'; }
 
+  // a render() that RETURNS markup paints itself here; one that draws the DOM
+  // directly returns nothing and this never runs (sync-architecture.md, "The page")
+  var boardHost = null;
+  function paint(html) {
+    if (!boardHost) {
+      boardHost = o.slide.querySelector('.board-host');
+      if (!boardHost) {
+        boardHost = document.createElement('div');
+        boardHost.className = 'board-host';
+        o.slide.insertBefore(boardHost, o.slide.firstChild);
+      }
+    }
+    boardHost.innerHTML = html;
+  }
+
   var frameNo = document.createElement('span');     // slide number, on the slide
   frameNo.className = 'frame-no';
   o.slide.appendChild(frameNo);
@@ -176,8 +194,7 @@ function createSyncedPlayer(o) {
           transcript.scrollTo({ top: top - transcript.clientHeight * 0.3, behavior: 'smooth' });
       }
     }
-    var k = -1;
-    for (var j = 0; j < s.words.length; j++) if (s.words[j][0] <= t) k = j;
+    var k = s.words.length && s.words[0][0] <= t ? lastAt(s.words, t, wordTime) : -1;
     if (k !== wordIdx) {
       wordIdx = k;
       var ws = caption.children;
@@ -223,7 +240,8 @@ function createSyncedPlayer(o) {
     if (i !== idx || mark !== curMark) {
       var changed = i !== idx;
       idx = i; curMark = mark;
-      o.render(frames[i], mark);
+      var drawn = o.render(frames[i], mark);
+      if (typeof drawn === 'string') paint(drawn);
       if (changed) {
         frameNo.textContent = (i + 1) + ' / ' + frames.length;
         if (!single) counter.textContent = nameOf(i);
@@ -255,6 +273,7 @@ function createSyncedPlayer(o) {
   timeline ? sync(0) : show(0);
 
   return {
+    frames: frames.length,        // page_index.py asks the player, not the ribbon
     stop: function () { if (audio) audio.pause(); cancelAnimationFrame(rafId); rafId = null; },
     goto: goto,       // frame index (a time on the timeline, a step without audio)
     key: function (ev) {      // Space, ← →, Shift+← → — from createLecture, for the active part only
@@ -350,7 +369,9 @@ function createLecture(o) {
     else if (active) players[active].key(ev);
   });
   fromHash();
-  return { players: players, activate: activate, fullscreen: fullscreen };
+  var api = { players: players, activate: activate, fullscreen: fullscreen };
+  window.__lecture = api;          // present only if the page mounted; page_index.py checks it
+  return api;
 }
 
 /* Syntax colouring without a library: keywords, types, strings, numbers,

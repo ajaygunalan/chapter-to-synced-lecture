@@ -1,7 +1,8 @@
 /* Inlined into lecture.html by build_page.py.
  * Part 1 is what player.js builds and depends on — keep the class names,
  * restyle through the tokens (light-dark(): light first, dark second).
- * Part 2 is page furniture a chapter may use or replace. */
+ * Part 2 is page furniture a chapter may use or replace.
+ * Part 3 is an optional slide geometry — sizes and positions only. */
 
 :root {
   color-scheme: light dark;
@@ -43,8 +44,10 @@
 .seekbar { display: flex; align-items: center; gap: 0.6rem; margin-top: 0.75rem; }
 .scrub { flex: 1 1 auto; accent-color: var(--accent); height: 1.2rem; cursor: pointer; }
 .clock { color: var(--muted); font-size: 0.85rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
-/* the slide: slide number bottom-left, fullscreen button bottom-right */
-.slide { position: relative; }
+/* the slide: slide number bottom-left, fullscreen button bottom-right.
+   .board-host is created by player.js when a render() returns its markup. */
+.slide { position: relative; overflow: hidden; }
+.board-host { position: absolute; inset: 0; }
 .frame-no { position: absolute; left: 0.8rem; bottom: 0.6rem; color: var(--muted); font-size: 0.85rem;
   font-variant-numeric: tabular-nums; pointer-events: none; }
 .fs-btn { position: absolute; right: 0.6rem; bottom: 0.35rem; font: inherit; font-size: 1.1rem; line-height: 1;
@@ -81,8 +84,9 @@ body.is-fullscreen main { max-width: none; padding: 0.75rem 1.25rem 4.5rem; heig
 body.is-fullscreen > :not(main), body.is-fullscreen main > :not([data-part].is-active),
 body.is-fullscreen [data-part].is-active > :not(.slide):not(.caption):not(.seekbar):not(.transport) { display: none; }
 body.is-fullscreen [data-part].is-active { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; }
-body.is-fullscreen .slide { flex: 1 1 auto; min-height: 0; overflow: hidden; }
-body.is-fullscreen .slide > svg, body.is-fullscreen .slide > canvas { width: 100%; height: 100%; }
+body.is-fullscreen .slide { flex: 1 1 auto; min-height: 0; }
+body.is-fullscreen .slide > svg, body.is-fullscreen .slide > canvas,
+body.is-fullscreen .board-host > svg, body.is-fullscreen .board-host > canvas { width: 100%; height: 100%; }
 body.is-fullscreen .caption { flex: 0 0 auto; }
 body.is-fullscreen .seekbar, body.is-fullscreen .transport { position: fixed; left: 1.25rem; right: 1.25rem; margin: 0;
   padding: 0.4rem 0.6rem; border-radius: 8px; background: color-mix(in srgb, var(--panel) 92%, transparent);
@@ -117,3 +121,17 @@ code, pre, .mono { font-family: var(--mono); font-size: 0.92em; }
 pre { background: var(--shade); padding: 0.75rem 1rem; border-radius: 6px; overflow-x: auto; }
 .eyebrow { color: var(--muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; }
 .muted { color: var(--muted); }
+
+/* ---- part 3: slide geometry (optional) ----------------------------------
+   Sizes and positions only, no colour and no type: a 16:9 canvas, a picture
+   beside a column of words, and text that scales with the slide rather than
+   the window. Override or ignore it — the player needs none of it. */
+.slide { aspect-ratio: 16 / 9; container-type: size; }
+.board { position: absolute; inset: 0; box-sizing: border-box; display: flex; gap: 2cqw;
+  padding: 2.2cqw 2.6cqw 3.2cqw; font-size: 1.55cqw; line-height: 1.35; }
+.board .fig { flex: 1 1 60%; min-width: 0; height: 100%; }         /* the picture */
+.board .fig > svg, .board .fig > canvas, .board .fig > img { display: block; width: 100%; height: 100%; }
+.board .side { flex: 1 1 40%; min-width: 0; display: flex; flex-direction: column;
+  gap: 0.7em; overflow: hidden; }                                   /* the words */
+.board .fig.wide, .board .side.wide { flex: 1 1 100%; }             /* one of them, alone */
+.board pre.code { overflow: visible; }             /* a listing is split across frames, never scrolled */

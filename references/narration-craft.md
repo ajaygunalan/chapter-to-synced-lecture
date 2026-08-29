@@ -20,18 +20,18 @@ typographic distinction, with its single spoken form; decided once.
 <!-- author: first-person practitioner; motivates with a real job gone wrong;
      wry, self-deprecating asides; closes with a boxed lesson -->
 <!-- glossary
-∞          the point at infinity
-⌋          contracted onto
-𝐩 vs p     the Euclidean vector p / the conformal point p
-DIP        always "dependency inversion" — the letters read as "dip"
-calculatePay()   the calculate-pay method
-purplecab.com/driver   purple cab dot com, slash driver
+θ            theta
+≤            at most
+x̄ vs x       the mean of x / a single x
+API          the letters, A-P-I — never said as a word
+getUserName()   the get-user-name method
+example.org/docs   example dot org, slash docs
 -->
 ```
 
-Acronyms: word (SOLID) or letters (S-R-P); anything the engine could read as
+Acronyms: word (NASA) or letters (H-T-M-L); anything the engine could read as
 an English word gets expanded. Identifiers are screen-only; the voice says
-"the calculate-pay method". Typography that carries meaning is said aloud.
+"the get-user-name method". Typography that carries meaning is said aloud.
 Diagram legend once, then plain verbs. Every name the engine would
 mispronounce gets a `pronounce:` entry in the header block.
 
@@ -56,16 +56,15 @@ glossary or a spoken form. The linter rejects `$` and maths glyphs in prose.
 
 ## Style sheet
 
+The rows are the lesson; the words in them are throwaway, and yours come from
+the chapter in front of you.
+
 | don't | do |
 |---|---|
-| "The edge B–D turns green." | "Of everything touching the tree, B–D is cheapest. That's the only question I ever ask." |
-| "On the board, the inner product is minus one." | "Take their inner product. Minus one." |
-| "I'll give you the dates because the chapter doesn't." | "Meyer, 1988. Liskov, the year before." — the source sits in the plan |
-| "The reader will note that the cut property guarantees safety." | "Here's why you can trust that edge: it crosses the cut, and nothing cheaper does." |
-| "Prim adds the lightest crossing edge." (cold) | "Obvious plan: grab the cheapest edge anywhere. Feels right? Watch it strand a vertex… that's why I only look at the frontier." |
-| "Next Prim picks C–E with weight 2." | "Three edges leave the tree. Which one?" — `<!-- ask -->` — "C–E. If you reached for A–D, that's the trap." |
-| "MST cost is Σ w(e), O(E log V) via a heap." | "Add up the weights you kept. With a heap, the whole thing runs in E log V." |
-| "That concludes Prim's algorithm." | "So that grows one tree. But what if you grew a forest — many little trees merging? That's Kruskal, and it's next." |
+| "On the board, the total comes to minus one." | "Take the total. Minus one." |
+| "I'll give you the date because the chapter doesn't." | "Nineteen sixty-eight, in a paper nobody read for a decade." |
+| "Total cost is Σ c(i), O(n log n) with a heap." | "Add up what you kept. With the right structure, the whole thing runs in n log n." |
+| naming the method, then defining it | "Obvious plan: grab the smallest one anywhere. Feels right? Watch it strand you…" |
 | dropping the author's aside | keeping it whole, in his voice — or cutting it whole. Never flattened into a claim. |
 
 ## Display blocks and spoken forms
@@ -78,9 +77,9 @@ lecturer would say, not a transliteration; one without a spoken form is
 dropped from the audio and reported.
 
 ```markdown
-$$W[i,j]^k = \min\left(W[i,j]^{k-1},\; W[i,k]^{k-1} + W[k,j]^{k-1}\right)$$
-<!-- spoken: the best route from i to j using only the first k stops is
-     either what you already had, or the trip through k — whichever is shorter -->
+$$E[X] = \sum_{i=1}^{n} x_i \, p_i$$
+<!-- spoken: multiply every outcome by how likely it is, add those up, and
+     that is what you should expect on average -->
 ```
 
 ## Honesty
@@ -99,36 +98,38 @@ it.
 # <Chapter title>
 
 <!-- author: … -->
-<!-- pronounce: Skiena = SKEE-nuh; Dijkstra = DYKE-struh -->
+<!-- pronounce: Nyquist = NYE-kwist; Cholesky = ko-LES-kee -->
 <!-- glossary
 …
 -->
 <!-- outline
-6     Weighted Graph Algorithms      -> skip: title
-6.1   Minimum Spanning Trees         -> prim
-6.1.1 Prim's Algorithm               -> prim
-6.7   Exercises                      -> skip: drill set
+7     The Chapter's Title            -> skip: title
+7.1   The First Idea                 -> alpha
+7.1.1 A Worked Example               -> alpha
+7.2   The Second Idea                -> beta
+7.5   Exercises                      -> skip: drill set
 -->
-<!-- corrections: Fig 6.5 array shown with 0 = root, as a legend -->
+<!-- corrections: p. 114 states the bound the other way round; said aloud -->
 
-## part: prim
+## part: alpha
 
-<!-- beat: prim-trouble | frame 0 -->
-Say we have to wire seven towns… <!-- pause 2s --> …and that guess is three
-too heavy.
+<!-- beat: alpha-trouble | frame 0 -->
+Say you have to do this by hand, a hundred times over…
+<!-- pause 2s --> …and that guess is three too many.
 
-<!-- beat: prim-scan | frame 1 -->
-Three edges leave what we own: <!-- mark: edge-AB -->A to B for five,
-<!-- mark: edge-AF -->A to F for seven, <!-- mark: edge-AG -->A to G for
-twelve. Which one do I take?
+<!-- beat: alpha-scan | frame 1 -->
+Three of them are in reach: <!-- mark: item-a -->the first, at five,
+<!-- mark: item-b -->the second, at seven, <!-- mark: item-c -->the third,
+at twelve. Which one do I take?
 <!-- ask -->
 
-If you said the cheapest edge anywhere — C–E, two — that's the trap: it
-doesn't touch the tree. <!-- mark: edge-AB | frame 2 -->A to B. Here's why
-that's safe…
+<!-- beat: alpha-take | frame 2 -->
+If you reached for the one at two, over on the far side — that's the trap:
+it isn't in reach yet. <!-- mark: item-a -->The first, at five. Here is why
+that is safe…
 
-## part: nets
-<!-- beat: nets-1 -->
+## part: beta
+<!-- beat: beta-1 -->
 …
 ```
 

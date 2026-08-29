@@ -6,10 +6,8 @@ What the built page actually offers, per part and per frame:
     page_index.py lecture.html --text     -> readable dump of every frame (frames.txt)
 
 The page is the authority on how many frames a part has and what ids its
-drawings carry, because both are produced by the page's own code at run
-time. lint.py resolves every frame number and mark id in script.md against
-this; the --text dump is what the script is written from (SKILL.md step 4),
-so the narration describes the run the slides actually computed.
+drawings carry (sync-architecture.md, "Marks"); --text is what the script is
+written from (SKILL.md step 4).
 
 Needs chromium (the same binary step 3 screenshots with).
 """
@@ -19,7 +17,6 @@ import re
 import shutil
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
 
 PROBE = r"""
@@ -28,11 +25,16 @@ PROBE = r"""
     location.hash = '#' + part + ':' + f;
     window.dispatchEvent(new HashChangeEvent('hashchange'));
   }
+  if (!window.__lecture) {            // createLecture never finished: say so, do not guess
+    document.title = 'PAGEINDEXFAILED';
+    return;
+  }
   var out = {};
   var parts = document.querySelectorAll('[data-part]');
   for (var i = 0; i < parts.length; i++) {
     var key = parts[i].getAttribute('data-part');
-    var n = parts[i].querySelectorAll('.ribbon .tick').length || 1;
+    var player = window.__lecture.players[key];
+    var n = player ? player.frames : 0;
     var frames = [];
     for (var f = 0; f < n; f++) {
       go(key, f);
@@ -48,7 +50,7 @@ PROBE = r"""
       } else own = sec.textContent;
       frames.push({
         marks: Object.keys(ids),
-        rows: sec.querySelectorAll('.ladder > div').length,
+        ids: Array.prototype.map.call(sec.querySelectorAll('[id]'), function (e) { return e.id; }),
         lines: sec.querySelectorAll('pre.code .line').length,
         label: label ? label.textContent : '',
         text: own.replace(/\s+/g, ' ').trim()
@@ -62,7 +64,11 @@ PROBE = r"""
 
 
 def index(html):
-    """-> {part: [{marks, rows, lines, label, text}, … one per frame]}"""
+    """-> {part: [{marks, ids, lines, label, text}, … one per frame]}
+
+    The page is the authority: the frame count comes from the mounted player,
+    not from counting furniture, so a page that failed to mount says so
+    instead of reporting a plausible one-frame deck."""
     html = Path(html).resolve()
     chromium = next((c for c in ("chromium", "chromium-browser", "google-chrome") if shutil.which(c)), None)
     if not chromium:
@@ -70,22 +76,22 @@ def index(html):
     page = html.read_text()
     if "PAGEINDEX" not in page:
         page = page.replace("</body>", "<script>setTimeout(function(){" + PROBE + "}, 60);</script></body>")
-    tmp = Path(tempfile.mkdtemp(prefix="pageindex-"))
-    probe = tmp / html.name
-    probe.write_text(page)
-    for extra in ("cues",):                      # the probe page loads cues/cues.js relative to itself
-        if (html.parent / extra).exists():
-            (tmp / extra).symlink_to(html.parent / extra)
+    probe = html.with_name("." + html.stem + "-pageindex.html")   # beside the original, so every
+    probe.write_text(page)                                        # relative path still resolves
     try:
         r = subprocess.run([chromium, "--headless=new", "--no-sandbox", "--disable-gpu",
                             "--virtual-time-budget=4000", "--dump-dom", str(probe)],
                            capture_output=True, text=True, timeout=180)
+        if re.search(r"<title>PAGEINDEXFAILED</title>", r.stdout):   # the title, not the probe's own source
+            sys.exit(f"{html.name} never mounted: createLecture did not finish, so the page has no "
+                     f"frames at all. Open it in a browser and read the console, or run the part's "
+                     f"module under node.")
         m = re.search(r"PAGEINDEX(\{.*?\})</title>", r.stdout, re.S)
         if not m:
             sys.exit(f"could not read the page: {(r.stderr or r.stdout)[:300]}")
         return json.loads(m.group(1))
     finally:
-        shutil.rmtree(tmp, ignore_errors=True)
+        probe.unlink(missing_ok=True)
 
 
 def main():
@@ -97,7 +103,8 @@ def main():
             print(f"\n===== part: {part} — {len(frames)} frames")
             for i, f in enumerate(frames):
                 print(f"\n--- frame {i}  {f['label']}")
-                print(f"    {f['text'][:1500]}")
+                text, cap = f["text"], 1500
+                print(f"    {text[:cap]}" + (f"  … [{len(text) - cap} more characters]" if len(text) > cap else ""))
                 if f["marks"]:
                     print(f"    marks: {' '.join(sorted(f['marks']))}")
     else:

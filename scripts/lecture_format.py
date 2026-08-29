@@ -9,7 +9,7 @@ import subprocess
 from datetime import datetime
 
 SEP = "\n\n"                                   # paragraph separator in the text sent to the engine
-MATH_GLYPHS = "∞⌋⌊∧∨∑∏∫√∂∇≠≤≥≈→↦⊗⊕½¼¾²³⁻∈∀∃"   # what "maths in prose" looks like
+MATH_GLYPHS = "∞⌋⌊∧∨∑∏∫√∂∇≠≤≥≈→↦⊗⊕½¼¾²³⁻∈∀∃∪∩∅±×÷≡∼⟨⟩‖⇒⇔′"   # what "maths in prose" looks like
 
 PART_RE = re.compile(r"^##\s*part:\s*(\S+)\s*$", re.M)
 BEAT_RE = re.compile(r"<!--\s*beat:\s*(\S+)((?:\s*\|[^>]*?)*)\s*-->")
@@ -24,7 +24,7 @@ NON_PAUSE_COMMENT_RE = re.compile(r"<!--(?!\s*pause\b).*?-->", re.S)   # what le
 BREAK_RE = re.compile(r'<break time="([\d.]+)s" />')                  # what a pause becomes in the engine's text
 PAUSE_MAX_S = 3                                                        # longer pauses are cut to this
 ASK_RE = re.compile(r"<!--\s*ask\s*-->")
-PROSE_START_RE = re.compile(r"""^\s*[\w"'“‘(]""")
+PROSE_START_RE = re.compile(r"""^\s*[\w"'“‘(…—-]""")   # … and — open prose, not a display block
 
 
 # ---- output layout ---------------------------------------------------------
@@ -58,13 +58,32 @@ NOTE = {"read": "extract, then the chapter and its figures",
         "record": "audio and cues", "open": ""}
 
 
+def _row(line):
+    """A run.log line -> (timestamp, phase, detail)."""
+    t, _, rest = line.partition(" ")
+    what, _, detail = rest.partition(" | ")
+    return t, what.strip(), detail.strip()
+
+
+def _phase_of(line):
+    return _row(line)[1]
+
+
 def stamp(out, what, detail=""):
     """Append one line to <out>/run.log. extract.py opens the run with "started";
-    each phase is stamped as it finishes; open.py closes it and prints the summary."""
+    each phase is stamped as it finishes; open.py closes it and prints the summary.
+    Stamping the same phase twice in one run replaces the earlier row, so a rebuilt
+    step reports the time it really took instead of leaving two rows behind."""
     out.mkdir(parents=True, exist_ok=True)
-    with (out / "run.log").open("a") as f:
-        f.write(f"{datetime.now().replace(microsecond=0).isoformat()} {what}"
-                + (f" | {detail}" if detail else "") + "\n")
+    log = out / "run.log"
+    rows = log.read_text().splitlines() if log.exists() else []
+    if what != "started":
+        starts = [i for i, r in enumerate(rows) if _phase_of(r) == "started"]
+        head, tail = (rows[:starts[-1] + 1], rows[starts[-1] + 1:]) if starts else ([], rows)
+        rows = head + [r for r in tail if _phase_of(r) != what]
+    rows.append(f"{datetime.now().replace(microsecond=0).isoformat()} {what}"
+                + (f" | {detail}" if detail else ""))
+    log.write_text("\n".join(rows) + "\n")
 
 
 def _mmss(seconds):
@@ -79,10 +98,9 @@ def run_summary(out):
         return "no run.log"
     rows = []
     for line in log.read_text().splitlines():
-        t, _, rest = line.partition(" ")
-        what, _, detail = rest.partition(" | ")
+        t, what, detail = _row(line)
         if what:
-            rows.append((datetime.fromisoformat(t), what.strip(), detail.strip()))
+            rows.append((datetime.fromisoformat(t), what, detail))
     starts = [i for i, r in enumerate(rows) if r[1] == "started"]
     if not starts:
         return "no 'started' stamp in run.log"

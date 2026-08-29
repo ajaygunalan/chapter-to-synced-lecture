@@ -8,25 +8,19 @@ carries the idea (`teaching.md`, the one rule).
 
 ## Classifying a section
 
-| The section… | Kind | Treatment |
-|---|---|---|
-| walks through steps that change data | **procedure** | step player over the data structure, frames computed by running it |
-| shows a structure being built or modified | **structure** | a diagram that grows frame by frame |
-| proves or argues that something must be true | **argument** | progressive build of the claim and its support |
-| rewrites an expression line by line | **derivation** | equation lines revealed in order, the changed term marked |
-| passes one design through several versions | **design evolution** | one canvas, versions as labelled frames, changed pieces highlighted |
-| relates parts of a system | **architecture** | component diagram revealed in dependency order |
-| shows two relationships on one diagram (control flow vs source dependency) | **dependency overlay** | same diagram, second arrow system toggled or coloured |
-| presents one object in several forms | **representation** | table or figure that morphs between views |
-| sets two or more things against each other | **comparison** | table that fills in, or side-by-side builds |
-| makes a claim about magnitude, growth, or cost | **quantity** | chart that builds a series at a time |
-| constructs something geometrically | **geometric construction** | canvas driven by the actual maths, not hand-placed coordinates |
-| improves a piece of code | **transformation** | before/after (or N versions) with highlighted diff |
-| shows maths implemented as code | **equation → code** | equation and listing side by side, corresponding parts marked together |
-| introduces vocabulary or a formal object | **definition** | the problem it answers first, then a static labelled figure, or an annotated formula when the definition is an equation |
-| tells a story about a real problem being solved | **case study** | annotated scene; usually voice-only |
-| poses a problem for the reader | **exercise** | an ask: the audio stops on the question, the answer follows |
-| drills notation or mechanics (many short items) | **drill set** | skip, or one representative drill as a question |
+| The section… | usually wants |
+|---|---|
+| walks through steps that change data | frames computed by running it, not drawn by hand |
+| builds or modifies a structure | one drawing that grows, rather than a new one each step |
+| argues that something must be true | the claim and its support built up in order |
+| rewrites an expression line by line | the lines revealed in order, the changed term marked |
+| passes one thing through several versions | one canvas, versions as frames, the difference lit |
+| sets things against each other | a table that fills in, or side-by-side builds |
+| poses a problem for the reader | an ask: the audio stops on the question |
+| drills mechanics (many short items) | skip it, or keep one as a question |
+
+The right column is what usually works, not what to do. A section that wants
+a photograph, a joke, or nothing at all on screen should get that instead.
 
 A section can be two kinds; prefer the one that carries its *argument*. A
 proof that also defines terms is an argument. A story whose payoff is a
@@ -74,9 +68,22 @@ pre.innerHTML = lines.map(function (l, i) {
 Build the listing once; a mark on a line (`line-27`) toggles `.line.lit` in
 `render`, so a listing can sit on screen whole while the voice walks it.
 
-The book's own code stays exactly as the book prints it. Code the lecture
-writes is as small as still shows the failure, in the house style of
-`code-style.md`.
+The book's own code stays exactly as the book prints it, in the book's own
+language. Code the lecture writes is as small as still shows the failure, in
+that same language.
+
+Either way it is code on a slide, not code in a file — read at a glance, from
+across a room, once. So:
+
+- **packed, not spacious.** Optional braces dropped, early returns on one
+  line where the language allows; a blank line only between the phases the
+  voice will name, never between every statement.
+- **names short enough to say out loud**, and the same throughout, so "the
+  backtrack helper" sends the eye straight to it.
+- **a comment only where the invariant is not obvious**, saying WHY — never
+  labelling what the line does. A comment that restates the code is a line
+  the listener reads twice.
+
 
 ## Which sections earn a part
 

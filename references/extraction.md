@@ -50,9 +50,9 @@ embed, and what the lecture skips.
 
 | ref | what | extracted as | usable? |
 |---|---|---|---|
-| Fig 6.3 | example graph with two spanning trees | labels only | rebuild from the edge list |
-| UML p.349 | 20-box class diagram | images/img-008-003.png | yes |
-| Eq 13.2 | point representation | text (lossy) + pages/p360.png | transcribed from render |
+| Fig 4.2 | the figure the chapter keeps pointing back to | labels only, no lines | rebuild it from the data in the caption and the prose |
+| Diagram p.112 | a twenty-box block diagram | images/img-008-003.png | yes, embed the raster |
+| Eq 7.1 | the definition the argument turns on | text (lossy) + pages/p112.png | transcribe from the render, never the text |
 
 Beyond this (OCR of scans, splitting, merging): the `document-skills:pdf`
 skill.
