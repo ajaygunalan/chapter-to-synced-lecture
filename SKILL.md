@@ -100,7 +100,7 @@ at them** — the URL must be absolute, or the browser photographs its own
 error page and every shot comes out the same plausible size:
 
 ```bash
-for f in prim:0 prim:8 kruskal:0 …; do p=${f%%:*}; n=${f##*:}
+for f in <part>:0 <part>:<frame> …; do p=${f%%:*}; n=${f##*:}
   chromium --headless --window-size=1500,1100 --virtual-time-budget=3000 \
     --screenshot="$PWD/shots/$p-$n.png" "file://$PWD/lecture.html#$f" &
 done; wait
