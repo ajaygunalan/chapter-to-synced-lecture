@@ -1,6 +1,6 @@
 ---
 name: chapter-to-synced-lecture
-description: Turn a book or textbook chapter (PDF) into a lecture given by its author — HTML slides plus narrated audio that drives them, with questions the audio stops on, word-synced captions, and a picture that lights whatever the voice names. Use this whenever someone gives you a chapter, paper, or textbook section and asks for a lecture, a podcast, a narrated walkthrough, an animated explainer, a "deep dive," an audio version, or a visual companion — and also when they ask to "turn this into a video/animation," "make this chapter listenable," or "teach me this chapter." Works for any subject — algorithms, software design, mathematics, graphics, economics — because the lecture is built from the chapter's own argument and examples, not a template. Do NOT use for interactive quizzing or active-recall study sessions; those are different skills.
+description: Turn a book or textbook chapter (PDF) into a lecture given by its author — HTML slides plus narrated audio that drives them, with questions the audio stops on, word-synced captions, and a picture that lights whatever the voice names. Use this whenever someone gives you a chapter, paper, or textbook section and asks for a lecture, a podcast, a narrated walkthrough, an animated explainer, a "deep dive," an audio version, or a visual companion — and also when they ask to "turn this into a video/animation," "make this chapter listenable," or "teach me this chapter." Use it again on a chapter it has already built — "let's go through that lecture", "I didn't follow the third part", "re-record this bit" — to walk the parts one at a time, explain what confused the listener, then revise the words, the slides and the audio. Works for any subject — algorithms, software design, mathematics, graphics, economics — because the lecture is built from the chapter's own argument and examples, not a template. Do NOT use for interactive quizzing or active-recall study sessions; those are different skills.
 ---
 
 # Chapter to synced lecture
@@ -23,7 +23,8 @@ anything else.
 
 One shot from PDF to a lecture opened in the browser, and `open.py` prints
 where the time went. Nothing is shown for approval on the way; the approval
-is the listening at the end, and what happens after it the user says.
+is the listening at the end, and what happens after it the user says
+("Revising", below).
 Nothing is reported beyond one sentence if a piece of the chapter could not
 be used.
 
@@ -34,6 +35,20 @@ Vocabulary: a **part** is one tab with one audio file; a **frame** is one
 slide; a **beat** is one idea in the narration, starting at a frame; a
 **mark** names the thing the voice is naming, lit at that word; an **ask**
 is a stop — the audio pauses on the question, Play brings the answer.
+
+## Build, or pick up where the listening stopped
+
+The PDF is the address of its own lecture: the output always sits at
+`<pdf-dir>/lectures/<chapter-slug>/`, so one invocation covers both jobs.
+
+- **No such directory** — build it: the five steps below.
+- **It is there** — do not rebuild. Read `run.log` and `script.md`'s header,
+  say what exists (the parts, when each was recorded, by which engine), and
+  ask which part to work on. Then "Revising", below.
+
+Building again from scratch means deleting that directory first. Nothing else
+triggers one, so coming back to a chapter weeks later resumes it instead of
+overwriting an hour of work.
 
 ## Inputs
 
@@ -192,6 +207,37 @@ paid recording is never overwritten by a later free one (`build_audio.py
 --help`).
 Setup and voices: `references/elevenlabs.md`; with no key, stop and say so. If `build_audio.py --check` fails, `references/kokoro.md`.
 
+## Revising
+
+The listening is the review, and it comes back one tab at a time. A part is
+self-contained — one stretch of `script.md`, one `audio/<part>.mp3`, one
+`cues/<part>.json` — so working on it needs the script's header, that one
+part, and that part's frames. Not the whole lecture: ten parts sit
+comfortably in ten separate sessions.
+
+**Teach before editing.** When the note is "I didn't follow this", explain it
+in the chat and let the listener say when it lands. Only then is it clear
+which sentence was at fault. Edit first and you are guessing at what confused
+them.
+
+| what changed | command | cost |
+|---|---|---|
+| a part's words | `build_audio.py script.md --out <outdir>` | that part alone re-records, in seconds |
+| only marks, asks or slides | `build_audio.py … --recue` | no synthesis at all |
+| only the page | `build_page.py lecture.src.html -o lecture.html` | instant |
+
+Each part is compared against `audio/<part>.txt`, the exact words it was
+given, so an unchanged part is never re-recorded and a changed one is never
+missed. `lint.py` after every edit.
+
+**Emphasis is written, not asked for.** Kokoro is level by design
+(`kokoro.md`) and will not lean on a word because the script wants it to.
+Move the word to the front, put it in CAPITALS, end the sentence sooner, or
+leave a `<!-- pause 2s -->` in front of it.
+
+Kokoro records every revision. ElevenLabs only when the listener asks for it
+by name, and only once the words have stopped moving.
+
 ## Output
 
 ```
@@ -206,8 +252,9 @@ Setup and voices: `references/elevenlabs.md`; with no key, stop and say so. If `
 └── extract/
 ```
 
-Rebuilding a chapter that already has a lecture: delete or move the old
-output first; never mix two builds' `audio/` and `cues/`.
+A lecture that already exists is revised, never rebuilt (above). A true
+rebuild means deleting the directory first — two builds must never share an
+`audio/` and `cues/`.
 
 ## Delegating
 

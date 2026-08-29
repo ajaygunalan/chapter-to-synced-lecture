@@ -26,6 +26,14 @@ a paid voice for a final take.
   can never disagree with the algorithm, and the narration is written from what
   the slides actually produced.
 
+## Then you revise it with the same command
+
+Point it at the same PDF and it finds the lecture already there, reads it, and
+gets ready to teach. Go through a tab, say what lost you, and it explains that
+bit in the chat first — then edits the script or the slide once you're happy,
+and re-records just that part. A few seconds, because each tab is its own audio
+file. Nothing else is touched.
+
 ## How it works
 
 Five steps, from PDF to a lecture open in your browser:
