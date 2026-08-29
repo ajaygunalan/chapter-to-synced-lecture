@@ -3,10 +3,8 @@ Subtitles for a part: sentence-level captions with per-word times, written
 into cues/<part>.json as "subs" and shown by player.js as a caption bar and
 a scrolling transcript.
 
-Timing comes from cues/<part>.align.json — the per-word start times each
-engine derives (align_from_char_starts) from its per-character alignment.
-time_at() is the one lookup from a character offset to seconds; beat cues,
-mark cues, question cues, and subtitles all use it.
+time_at() is the one lookup from a character offset (in the text the engine
+got) to seconds; beat, mark, ask and subtitle times all come from it.
 """
 
 import difflib
@@ -36,12 +34,13 @@ def words_with_offsets(text):
     return [(m.start(), m.group()) for m in re.finditer(r"\S+", text)]
 
 
-def align_from_char_starts(text, starts, t0=0.0):
-    """An engine's per-character start times -> [[offset, t]] per word (what .align.json stores)."""
+def align_from_char_starts(text, starts, t0=0.0, off0=0):
+    """An engine's per-character start times for `text`, which sits at char off0 of the
+    part and t0 seconds into it -> [[offset, t]] per word (what .align.json stores)."""
     out = []
     for off, _ in words_with_offsets(text):
         i = min(off, len(starts) - 1)
-        out.append([off, round(t0 + (starts[i] if starts else 0.0), 3)])
+        out.append([off0 + off, round(t0 + (starts[i] if starts else 0.0), 3)])
     return out
 
 

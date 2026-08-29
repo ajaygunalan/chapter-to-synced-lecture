@@ -7,15 +7,11 @@ script, stylesheet, or font loads at runtime. Rendered expressions are cached
 in <html>.math-cache.json next to the file, so rebuilding a page only costs
 the new or changed expressions.
 
-    render_math.py lecture.html            # in place
-    render_math.py lecture.html -o out.html
-
-Skips <script>, <style>, <pre>, <code>. Write `\\$` for a literal dollar. Use
+Used by build_page.py. Skips <script>, <style>, <pre>, <code>. Write `\\$` for a literal dollar. Use
 \\lt and \\gt instead of < and > inside maths.
 Needs node plus KaTeX: `npm i -g katex`, or npx will fetch it on first run.
 """
 
-import argparse
 import html
 import json
 import re
@@ -115,18 +111,10 @@ def render_html(src, cache_file):
     return "".join(x for i, x in enumerate(parts) if i % 3 != 2), len(found), errors
 
 
-def main():
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("html", type=Path)
-    ap.add_argument("-o", "--out", type=Path)
-    args = ap.parse_args()
-    page, n, errors = render_html(args.html.read_text(), args.html.with_suffix(args.html.suffix + ".math-cache.json"))
-    (args.out or args.html).write_text(page)
-    print(f"{n} expressions -> {args.out or args.html}")
+def cache_path(html_path):
+    return html_path.with_suffix(html_path.suffix + ".math-cache.json")
+
+
+def report(errors):
     for tex, err in errors:
         print(f"  ! {tex[:60]!r}: {err[:120]}", file=sys.stderr)
-    sys.exit(1 if errors else 0)
-
-
-if __name__ == "__main__":
-    main()

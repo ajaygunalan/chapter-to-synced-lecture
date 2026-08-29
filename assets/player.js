@@ -1,11 +1,6 @@
 /* Audio-synced slides. audio.currentTime is the only clock; the current
  * frame and the current mark are derived from it on every animation tick.
- * With audio:null it is a manual stepper. Contract: references/sync-architecture.md.
- *
- * Navigation moves the position; Play decides whether sound comes out:
- * ← → step frames (seek, never auto-play), Space play/pause, Shift+← → ±10 s,
- * F or the ⛶ button fullscreen, 1–9 parts. An ask pauses the audio and takes
- * the caption bar; Play resumes. */
+ * With audio:null it is a manual stepper. Contract: references/sync-architecture.md. */
 function createSyncedPlayer(o) {
   function nonEmpty(a) { return a && a.length ? a : null; }
   function byT(a, b) { return a.t - b.t; }
@@ -23,13 +18,10 @@ function createSyncedPlayer(o) {
       timeline = !!beats,
       last   = frames.length - 1,
       single = frames.length <= 1,
-      idx = -1, curMark = null, beatIdx = -1, litTick = null, rafId = null;
+      idx = -1, curMark = null, litTick = null, rafId = null;
 
-  // ---- derived timeline: one row per (time, frame, beat) ---------------------
-  // A beat runs from its start frame up to the next beat's start frame. If the
-  // beat's marks name frames, frames change exactly on those marks; otherwise
-  // the frames are spread evenly across the beat (a guess the linter reports).
-  // A beat with frame:null holds. Rows are sorted by time.
+  // ---- derived timeline: one row per (time, frame, beat), sorted by time ------
+  // (semantics: sync-architecture.md, "Beats" and "Marks")
   var rows = [];
   if (beats) {
     var cur = 0;
@@ -67,13 +59,7 @@ function createSyncedPlayer(o) {
   function nameOf(i) { return frames[i].label || ('Step ' + (i + 1)); }
 
   // ---- transport --------------------------------------------------------
-  function btn(label, fn, title) {
-    var b = document.createElement('button');
-    b.type = 'button'; b.className = 'btn'; b.textContent = label; b.onclick = fn;
-    if (title) b.title = title;
-    o.mount.appendChild(b);
-    return b;
-  }
+  function btn(label, fn, title) { return o.mount.appendChild(makeButton('btn', label, fn, title)); }
   function skip(d) { seek(Math.max(0, Math.min(audio.duration || 1e9, audio.currentTime + d))); }
   var prev = btn('◀', function () { step(-1); }, 'Previous slide (←)');
   if (audio) btn('−10s', function () { skip(-10); }, 'Shift+←');
@@ -125,30 +111,23 @@ function createSyncedPlayer(o) {
   var counter = document.createElement('span');
   counter.className = 'counter';
   o.mount.appendChild(counter);
-  if (single && !audio) { prev.hidden = next.hidden = again.hidden = play.hidden = true; counter.textContent = 'narration not built yet'; }
+  if (single && !audio) { prev.hidden = next.hidden = again.hidden = play.hidden = true; counter.textContent = 'no narration'; }
 
-  // slide number, drawn on the slide itself (or, without a slide element, beside the transport)
-  var frameNo = document.createElement('span');
+  var frameNo = document.createElement('span');     // slide number, on the slide
   frameNo.className = 'frame-no';
-  (o.slide || o.mount).appendChild(frameNo);
+  o.slide.appendChild(frameNo);
 
   var ribbon = document.createElement('div');
   ribbon.className = 'ribbon';
   o.mount.parentNode.insertBefore(ribbon, o.mount.nextSibling);
   ribbon.hidden = single;
   var ticks = frames.map(function (s, i) {
-    var t = document.createElement('button');
-    t.type = 'button';
-    t.className = 'tick' + (s.tone ? ' t-' + s.tone : '');
-    t.title = nameOf(i);
+    var t = makeButton('tick' + (s.tone ? ' t-' + s.tone : ''), '', function () { goto(i); }, nameOf(i));
     t.setAttribute('aria-label', nameOf(i) + ' (' + (i + 1) + ' of ' + frames.length + ')');
-    t.onclick = function () { goto(i); };
-    ribbon.appendChild(t);
-    return t;
+    return ribbon.appendChild(t);
   });
 
-  // ---- captions: the sentence under the slide, then the transcript under that -----
-  // subs: [{t, end, text, words: [[t, word], …]}] from cues/<part>.json.
+  // ---- caption and transcript (subs: [{t, end, text, words: [[t, word], …]}]) -----
   var caption = null, transcript = null, subEls = [], subIdx = -1, wordIdx = -1, userScrolledAt = 0;
   if (subs) {
     caption = document.createElement('div');
@@ -238,7 +217,7 @@ function createSyncedPlayer(o) {
   }
 
   // ---- rendering --------------------------------------------------------
-  function show(i, b, mark) {
+  function show(i, mark) {
     i = Math.max(0, Math.min(last, i));
     mark = mark || null;
     if (i !== idx || mark !== curMark) {
@@ -253,10 +232,9 @@ function createSyncedPlayer(o) {
         if (!audio) { prev.disabled = i === 0; next.disabled = i === last; }
       }
     }
-    if (o.onBeat && b !== undefined && b !== beatIdx) { beatIdx = b; o.onBeat(beats[b]); }
   }
   function sync(t) {
-    if (timeline) { var r = rowAt(t); show(r.frame, r.beat, markAt(t, beats[r.beat].t)); }
+    if (timeline) { var r = rowAt(t); show(r.frame, markAt(t, beats[r.beat].t)); }
     showSub(t); showClock(t);
   }
   function seek(t) { closeAsk(); audio.currentTime = t; lastT = t; sync(t); }
@@ -274,35 +252,33 @@ function createSyncedPlayer(o) {
     audio.addEventListener('pause', function () { play.textContent = askOpen ? '▶ Answer' : '▶ Resume'; cancelAnimationFrame(rafId); rafId = null; });
     audio.addEventListener('ended', function () { play.textContent = '▶ Play'; });
   }
-  // keys act only while this part's panel is visible
-  document.addEventListener('keydown', function (ev) {
-    if (o.mount.offsetParent === null || !keyIsFree(ev)) return;
-    if (ev.key === ' ') { ev.preventDefault(); toggle(); }
-    else if (ev.key === 'ArrowLeft') { ev.preventDefault(); ev.shiftKey && audio ? skip(-10) : step(-1); }
-    else if (ev.key === 'ArrowRight') { ev.preventDefault(); ev.shiftKey && audio ? skip(10) : step(1); }
-  });
   timeline ? sync(0) : show(0);
 
   return {
     stop: function () { if (audio) audio.pause(); cancelAnimationFrame(rafId); rafId = null; },
-    goto: goto        // frame index (a time on the timeline, a step without audio)
+    goto: goto,       // frame index (a time on the timeline, a step without audio)
+    key: function (ev) {      // Space, ← →, Shift+← → — from createLecture, for the active part only
+      if (ev.key === ' ') { ev.preventDefault(); toggle(); }
+      else if (ev.key === 'ArrowLeft') { ev.preventDefault(); ev.shiftKey && audio ? skip(-10) : step(-1); }
+      else if (ev.key === 'ArrowRight') { ev.preventDefault(); ev.shiftKey && audio ? skip(10) : step(1); }
+    }
   };
 }
 
-/* a key press is ours unless focus is in a field or a modifier is held */
-function keyIsFree(ev) {
-  var tag = (ev.target.tagName || '').toLowerCase();
-  return !(tag === 'input' || tag === 'textarea' || tag === 'select' || ev.metaKey || ev.ctrlKey || ev.altKey);
+function makeButton(cls, text, onclick, title) {
+  var b = document.createElement('button');
+  b.type = 'button'; b.className = cls; b.textContent = text; b.onclick = onclick;
+  if (title) b.title = title;
+  return b;
 }
 
 /* The page: one player per part, the tabs, the #part:frame hash, fullscreen,
- * and the audio/cues wiring. Pages supply frames and render only.
- *   createLecture({ parts: [{ key, frames, render, name?, tab?, onBeat? }, …],
- *                   tabs?: element (default .tabs; null for none) })
+ * keys, and the audio/cues wiring. Pages supply frames and render only.
+ *   createLecture({ parts: [{ key, name, frames, render }, …] })
  *   -> { players: {key: player}, activate(key, frame?), fullscreen(on) } */
 function createLecture(o) {
-  var cues = (typeof window.LECTURE_CUES === 'object' && window.LECTURE_CUES) || {};
-  var tabs = o.tabs === undefined ? document.querySelector('.tabs') : o.tabs;
+  var cues = window.LECTURE_CUES || {};
+  var tabs = document.querySelector('.tabs');
   var players = {}, entries = [], active = null;
 
   o.parts.forEach(function (m) {
@@ -311,24 +287,19 @@ function createLecture(o) {
     var mount = section.querySelector('.transport');
     if (!mount) { mount = document.createElement('div'); mount.className = 'transport'; section.appendChild(mount); }
     var c = cues[m.key], audio = null, slide = section.querySelector('.slide');
-    if (c && c.beats && c.beats.length) { audio = new Audio(c.audio || 'audio/' + m.key + '.mp3'); audio.preload = 'metadata'; }
+    if (!slide) { console.warn('part ' + m.key + ' has no .slide'); return; }
+    if (c && c.beats && c.beats.length) { audio = new Audio(c.audio); audio.preload = 'metadata'; }
     players[m.key] = createSyncedPlayer({
-      frames: m.frames, render: m.render, onBeat: m.onBeat, mount: mount, audio: audio, slide: slide,
+      frames: m.frames, render: m.render, mount: mount, audio: audio, slide: slide,
       beats: c && c.beats, marks: c && c.marks, subs: c && c.subs, questions: c && c.questions
     });
-    if (slide) {
-      var fs = document.createElement('button');
-      fs.type = 'button'; fs.className = 'fs-btn'; fs.title = 'Fullscreen (F)'; fs.textContent = '⛶';
-      fs.setAttribute('aria-label', 'Fullscreen');
-      fs.onclick = toggleFullscreen;
-      slide.appendChild(fs);
-    }
+    var fs = makeButton('fs-btn', '⛶', toggleFullscreen, 'Fullscreen (F)');
+    fs.setAttribute('aria-label', 'Fullscreen');
+    slide.appendChild(fs);
     var tab = null;
     if (tabs) {
-      tab = document.createElement('button');
-      tab.type = 'button'; tab.setAttribute('role', 'tab'); tab.setAttribute('aria-selected', 'false');
-      if (m.tab) tab.innerHTML = m.tab; else tab.textContent = m.name || m.key;
-      tab.onclick = function () { activate(m.key); };
+      tab = makeButton('', m.name || m.key, function () { activate(m.key); });
+      tab.setAttribute('role', 'tab'); tab.setAttribute('aria-selected', 'false');
       tabs.appendChild(tab);
     }
     entries.push({ key: m.key, section: section, tab: tab });
@@ -370,11 +341,13 @@ function createLecture(o) {
   window.addEventListener('hashchange', fromHash);
   function toggleFullscreen() { fullscreen(!document.body.classList.contains('is-fullscreen')); }
   document.addEventListener('keydown', function (ev) {
-    if (!keyIsFree(ev)) return;
+    var tag = (ev.target.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea' || tag === 'select' || ev.metaKey || ev.ctrlKey || ev.altKey) return;
     var n = +ev.key;
     if (ev.key.length === 1 && n >= 1 && n <= entries.length) activate(entries[n - 1].key);
     else if (ev.key === 'f' || ev.key === 'F') toggleFullscreen();
     else if (ev.key === 'Escape') fullscreen(false);
+    else if (active) players[active].key(ev);
   });
   fromHash();
   return { players: players, activate: activate, fullscreen: fullscreen };
@@ -382,11 +355,10 @@ function createLecture(o) {
 
 /* Syntax colouring without a library: keywords, types, strings, numbers,
  * comments, calls. highlightCode(text, lang?) -> HTML for a <pre>/<code>.
- * lang: 'cpp' (default) | 'java' | 'python' | 'js'. Teaching marks (.hl,
- * .bad, .good) are the page's own spans, wrapped around lines after this. */
+ * lang: 'cpp' (default) | 'java' | 'python' | 'js'. */
 var CODE_WORDS = {
   cpp: { kw: 'if else for while do return break continue switch case default new delete this class struct enum union namespace using template typename public private protected virtual override final const constexpr static inline auto void bool char int long short float double unsigned signed nullptr true false try catch throw operator sizeof friend explicit noexcept mutable',
-         ty: 'string vector map set unordered_map unordered_set pair tuple optional array deque queue stack priority_queue function shared_ptr unique_ptr size_t int8_t int16_t int32_t int64_t uint8_t uint16_t uint32_t uint64_t Money Report' },
+         ty: 'string vector map set unordered_map unordered_set pair tuple optional array deque queue stack priority_queue function shared_ptr unique_ptr size_t int8_t int16_t int32_t int64_t uint8_t uint16_t uint32_t uint64_t' },
   java: { kw: 'if else for while do return break continue switch case default new this class interface enum extends implements public private protected static final abstract void boolean char int long short float double byte null true false try catch finally throw throws import package instanceof super synchronized',
           ty: 'String List ArrayList Map HashMap Set HashSet Integer Long Double Boolean Object' },
   python: { kw: 'if elif else for while return break continue def class lambda import from as pass yield with try except finally raise in is not and or None True False global nonlocal async await del assert',
@@ -394,13 +366,17 @@ var CODE_WORDS = {
   js: { kw: 'if else for while do return break continue switch case default new this class extends function var let const typeof instanceof in of null undefined true false try catch finally throw async await import export',
         ty: 'Array Object Map Set Promise Number String Boolean Math JSON console document window' }
 };
-function highlightCode(text, lang) {
-  var w = CODE_WORDS[lang || 'cpp'] || CODE_WORDS.cpp;
-  var kw = {}, ty = {};
+Object.keys(CODE_WORDS).forEach(function (l) {          // word lists -> lookup sets, once
+  var w = CODE_WORDS[l], kw = {}, ty = {};
   w.kw.split(' ').forEach(function (x) { kw[x] = 1; }); w.ty.split(' ').forEach(function (x) { ty[x] = 1; });
-  var esc = function (t) { return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
-  var re = /(\/\/[^\n]*|#[^\n]*|\/\*[\s\S]*?\*\/)|("(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*')|(\b\d+(?:\.\d+)?[fFuUlL]*\b)|([A-Za-z_]\w*)(?=\s*\()|([A-Za-z_]\w*)/g;
-  var out = '', last = 0, m;
+  w.kw = kw; w.ty = ty;
+});
+var CODE_TOKEN_RE = /(\/\/[^\n]*|#[^\n]*|\/\*[\s\S]*?\*\/)|("(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*')|(\b\d+(?:\.\d+)?[fFuUlL]*\b)|([A-Za-z_]\w*)(?=\s*\()|([A-Za-z_]\w*)/g;
+function escapeHtml(t) { return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+function highlightCode(text, lang) {
+  var w = CODE_WORDS[lang || 'cpp'] || CODE_WORDS.cpp, kw = w.kw, ty = w.ty, esc = escapeHtml;
+  var re = CODE_TOKEN_RE, out = '', last = 0, m;
+  re.lastIndex = 0;
   while ((m = re.exec(text))) {
     out += esc(text.slice(last, m.index));
     var t = m[0], cls = null;

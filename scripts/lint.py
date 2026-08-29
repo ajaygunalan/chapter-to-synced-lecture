@@ -32,8 +32,11 @@ from lecture_format import (COMMENT_RE, MATH_GLYPHS, audio_path, cue_path, durat
                             parse_outline, parse_parts, walk)
 
 GLYPH_RE = re.compile("[$" + MATH_GLYPHS + "]")
-PANEL_RE = re.compile(r'<\w+[^>]*\sdata-part="([^"]+)"')   # the attribute on a tag, not a JS selector string
-ID_RE = re.compile(r'<\w+[^>]*\sid="([^"]+)"')
+def attr_re(name):                       # the attribute on a tag, not a JS selector string
+    return re.compile(r'<\w+[^>]*\s' + name + r'="([^"]+)"')
+
+
+PANEL_RE, ID_RE = attr_re("data-part"), attr_re("id")
 
 
 def main():

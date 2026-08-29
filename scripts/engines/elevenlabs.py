@@ -1,8 +1,4 @@
-"""
-ElevenLabs: the final voice, billed per character — `--engine elevenlabs`,
-run once when the words are final. What this module assumes about the API,
-setup, voices and quota: references/elevenlabs.md.
-"""
+"""ElevenLabs engine. API assumptions, setup, voices, quota: references/elevenlabs.md."""
 
 import base64
 import os
@@ -21,7 +17,6 @@ VOICES = {                                     # --voice takes a name here or a 
     "thomas": "8sGzMkj2HZn6rYwGx6G0",
 }
 DEFAULT = "thomas"
-VOICE_ENV = "ELEVENLABS_VOICE_ID"
 DEFAULT_MODEL = "eleven_multilingual_v2"
 OUTPUT_FORMAT = "mp3_44100_128"
 MODEL_LIMITS = {"eleven_multilingual_v2": 10000, "eleven_flash_v2_5": 40000, "eleven_v3": 5000}
@@ -30,13 +25,11 @@ MODEL_LIMITS = {"eleven_multilingual_v2": 10000, "eleven_flash_v2_5": 40000, "el
 def add_args(ap):
     g = ap.add_argument_group("elevenlabs")
     g.add_argument("--model", default=DEFAULT_MODEL)
-    g.add_argument("--limit", type=int, help="chars per request (default: the model's limit)")
     g.add_argument("--stability", type=float, default=0.45)
     g.add_argument("--similarity", type=float, default=0.75)
     g.add_argument("--style", type=float, default=0.0)
     g.add_argument("--speed", type=float, default=1.0)
-    g.add_argument("--seed", type=int)
-    g.add_argument("--probe", action="store_true", help="with --check: one 25-character request to prove the text_to_speech scope")
+    g.add_argument("--probe", action="store_true", help="with --check: one short request to prove the text_to_speech scope")
     g.add_argument("--list-voices", action="store_true", help="with --check: the account's voices")
 
 
@@ -103,7 +96,7 @@ class Api:
             labels = ", ".join(f"{k}={x}" for k, x in (v.get("labels") or {}).items())
             print(f"{v['voice_id']}  {v['name']:<22} {v.get('category', ''):<10} {labels}")
 
-    def synthesize(self, text, voice, model, voice_settings, seed=None,
+    def synthesize(self, text, voice, model, voice_settings,
                    previous_text=None, next_text=None, previous_ids=()):
         """-> (audio bytes, char start times, request id, character cost)"""
         body = {"text": text, "model_id": model, "voice_settings": voice_settings}
@@ -113,8 +106,6 @@ class Api:
             body["next_text"] = next_text
         if previous_ids:
             body["previous_request_ids"] = list(previous_ids)
-        if seed is not None:
-            body["seed"] = seed
         r = self._req("POST", f"/text-to-speech/{voice}/with-timestamps", timeout=(10, 600),
                       params={"output_format": OUTPUT_FORMAT}, json=body)
         if r.status_code >= 400:
@@ -142,7 +133,7 @@ def check(args):
         audio, starts, rid, cost = api.synthesize("Testing the lecture pipeline.", args.voice, args.model, settings(args))
         print(f"text_to_speech OK: {len(audio)} bytes, {len(starts)} aligned chars, cost {cost}, request-id {rid}")
     else:
-        print("text_to_speech scope: add --probe to verify (one 25-character request)")
+        print("text_to_speech scope: add --probe to verify (one short request)")
 
 
 def chunk_paragraphs(paragraphs, limit):
@@ -164,13 +155,13 @@ def chunk_paragraphs(paragraphs, limit):
 def synth(paragraphs, args, tmp):
     api = Api(find_key())
     offsets = para_offsets(paragraphs)
-    chunks = chunk_paragraphs(paragraphs, args.limit or MODEL_LIMITS.get(args.model, 5000))
+    chunks = chunk_paragraphs(paragraphs, MODEL_LIMITS.get(args.model, 5000))
     voice_settings = settings(args)
     pieces, ids, t0, align, cost_total = [], [], 0.0, [], 0
     print(f"    {len(chunks)} request(s) to ElevenLabs")
     for i, (first_para, ctext) in enumerate(chunks):
         audio, starts, rid, cost = api.synthesize(
-            ctext, args.voice, args.model, voice_settings, args.seed,
+            ctext, args.voice, args.model, voice_settings,
             previous_text=chunks[i - 1][1][-600:] if i else None,
             next_text=chunks[i + 1][1][:600] if i + 1 < len(chunks) else None,
             previous_ids=ids)
@@ -178,7 +169,7 @@ def synth(paragraphs, args, tmp):
         piece = tmp / f"{i:02d}.mp3"
         piece.write_bytes(audio)
         pieces.append(piece)
-        align += [[offsets[first_para] + off, t] for off, t in align_from_char_starts(ctext, starts, t0)]
+        align += align_from_char_starts(ctext, starts, t0, offsets[first_para])
         ids = (ids + [rid])[-3:] if rid else ids
         dur = duration_of(piece) or 0.0
         print(f"    chunk {i + 1}/{len(chunks)}: {len(ctext)} chars -> {dur:.1f}s" + (f", cost {cost}" if cost else ""))

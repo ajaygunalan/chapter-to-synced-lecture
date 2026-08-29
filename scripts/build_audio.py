@@ -3,11 +3,10 @@
 script.md -> <out>/audio/<part>.mp3 + <out>/cues/<part>.json + <out>/cues/cues.js
 
 One audio file per part, and a cue for every beat, mark and ask, timed from
-the engine's per-word alignment. Every engine (scripts/engines/) returns the
-same alignment, so nothing downstream knows which one spoke.
+the engine's per-word alignment (engines: scripts/engines/).
 
-    build_audio.py script.md --out DIR                          # kokoro: local, free — every dry run
-    build_audio.py script.md --out DIR --engine elevenlabs      # the final voice, billed — once, on request
+    build_audio.py script.md --out DIR                          # kokoro (default)
+    build_audio.py script.md --out DIR --engine elevenlabs
     build_audio.py script.md --out DIR --recue                  # re-time cues from the existing recording; no synthesis
     build_audio.py --check [--engine E]                         # what the engine can do right now
     --voice NAME|ID  --part KEY  --force  ; --engine E --help lists E's own options
@@ -23,49 +22,25 @@ references/elevenlabs.md.
 import argparse
 import functools
 import json
-import re
 import shutil
 import sys
 import tempfile
 from pathlib import Path
 
 import engines
-from lecture_format import (NON_PAUSE_COMMENT_RE, PAUSE_RE, SEP, align_path, audio_path, cue_path, marks_in,
-                            para_offsets, parse_parts, parse_pronounce, stamp, text_path, walk)
+from lecture_format import (SEP, align_path, audio_path, cue_path, cues_js_path, marks_in, para_offsets,
+                            parse_parts, parse_pronounce, prose_text, spoken_text, stamp, text_path, walk)
 from subtitles import build_subs, time_at, words_with_offsets
 
 print = functools.partial(print, flush=True)   # progress must reach a redirected log as it happens
 CHARS_PER_MIN = 930                            # spoken narration, measured
 
 
-# --------------------------------------------------------------------------
-# script -> what the engine says
-# --------------------------------------------------------------------------
-
-def spoken_text(text, rules):
-    """Prose or a spoken form -> (what the engine gets, what the reader sees).
-    Pauses become <break> tags for the engine and vanish for the reader;
-    pronunciation respellings apply to the engine's copy only."""
-    shown = " ".join(PAUSE_RE.sub(" ", text).split())
-    spoken = PAUSE_RE.sub(lambda p: f' <break time="{min(float(p.group(1)), 3):g}s" /> ', text)
-    spoken = " ".join(spoken.split())
-    for rx, say in rules:
-        spoken = rx.sub(say, spoken)
-    return spoken, shown
-
-
-def prose_text(block):
-    s = NON_PAUSE_COMMENT_RE.sub("", block)                # marks and notes go; pauses stay for spoken_text
-    s = re.sub(r"[*_`]+", "", s)                           # markdown emphasis
-    return re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", s)      # links -> text
-
-
 def build_narration(body, rules, warn):
     """-> (paragraphs, shown, beats, marks, asks). beat["para"] is the paragraph
-    the beat starts on; a mark is {"id", "frame", "para", "word": index of the
-    first spoken word after it}; an ask is {"para": the paragraph AFTER the
-    question, "prompt": the question as shown} — the audio pauses where that
-    paragraph would start."""
+    the beat starts on; a mark is {"id", "frame", "para", "word"}; an ask is
+    {"para": the paragraph AFTER the question, "prompt": the question as shown}
+    — the audio pauses where that paragraph would start."""
     paragraphs, shown, beats, marks, asks = [], [], [], [], []
     for beat, items in walk(body):
         texts = []
@@ -88,8 +63,7 @@ def build_narration(body, rules, warn):
                     continue
                 para_index = len(paragraphs) + len(texts)
                 for m in marks_in(item[1]):
-                    # the mark belongs to the first word after it: count the spoken words before it,
-                    # through the same transformations the paragraph itself goes through
+                    # count the spoken words before the mark, through the paragraph's own transformations
                     prefix = spoken_text(prose_text(item[1][:m["pos"]]), rules)[0]
                     marks.append({"id": m["id"], "frame": m["frame"], "para": para_index,
                                   "word": len(words_with_offsets(prefix))})
@@ -144,7 +118,7 @@ def write_cues(cf, cues, key, narration, align, duration):
 def write_cues_js(out, keys):
     """cues/cues.js: window.LECTURE_CUES = {part: cues}, in script order, for the parts built."""
     cues = {k: json.loads(cue_path(out, k).read_text()) for k in keys if cue_path(out, k).exists()}
-    (out / "cues" / "cues.js").write_text("window.LECTURE_CUES = " + json.dumps(cues) + ";\n")
+    cues_js_path(out).write_text("window.LECTURE_CUES = " + json.dumps(cues) + ";\n")
     return len(cues)
 
 

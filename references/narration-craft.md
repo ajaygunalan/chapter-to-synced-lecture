@@ -32,15 +32,8 @@ purplecab.com/driver   purple cab dot com, slash driver
 Acronyms: word (SOLID) or letters (S-R-P); anything the engine could read as
 an English word gets expanded. Identifiers are screen-only; the voice says
 "the calculate-pay method". Typography that carries meaning is said aloud.
-Diagram legend once, then plain verbs. Every proper noun gets a `pronounce:`
-entry in the header block.
-
-## The opening of a part
-
-Before the idea is explained, the listener must want it — `teaching.md`,
-principle 2, says how a part opens. The test on the page: if the first
-paragraph is about the previous chapter, or a struct, or a definition with
-no reason behind it, the opening has been skipped.
+Diagram legend once, then plain verbs. Every name the engine would
+mispronounce gets a `pronounce:` entry in the header block.
 
 ## Writing for the ear
 
@@ -49,17 +42,14 @@ no reason behind it, the opening has been skipped.
 - Signpost what the eye gets from layout: "three things to hold", "here's
   the part worth slowing down on", "that was the mechanical bit".
 - Say the key idea until it lands — formally, as a picture, as a rule of
-  thumb — in whatever forms the moment wants. Some listeners are fogged out
-  at any given moment.
+  thumb — in whatever forms the moment wants.
 - Keep something happening: each paragraph follows the last by consequence
   or contrast ("so", "but"), never by mere sequence ("and then").
 - Emphasis with words and CAPITALS, not markup. Pauses with full stops,
   paragraph breaks, "…", and a `pause` where the listener needs a moment to
-  think (Script format).
-- Whatever the voice names, mark it (Script format, `mark`) — an edge, a
-  line, a cell, a bullet — so it lights as it is said (`sync-architecture.md`,
-  "Marks", says what not to mark).
-- Read every draft aloud. What you stumble on, the engine stumbles on.
+  think.
+- Whatever the voice names, mark it (`mark`, below) — an edge, a line, a
+  cell, a bullet — so it lights as it is said.
 
 Narration contains no maths and no code; anything symbolic goes through the
 glossary or a spoken form. The linter rejects `$` and maths glyphs in prose.
@@ -75,7 +65,6 @@ glossary or a spoken form. The linter rejects `$` and maths glyphs in prose.
 | "Prim adds the lightest crossing edge." (cold) | "Obvious plan: grab the cheapest edge anywhere. Feels right? Watch it strand a vertex… that's why I only look at the frontier." |
 | "Next Prim picks C–E with weight 2." | "Three edges leave the tree. Which one?" — `<!-- ask -->` — "C–E. If you reached for A–D, that's the trap." |
 | "MST cost is Σ w(e), O(E log V) via a heap." | "Add up the weights you kept. With a heap, the whole thing runs in E log V." |
-| a 40-word sentence with a semicolon | two sentences, one idea each; the second starts with "So". |
 | "That concludes Prim's algorithm." | "So that grows one tree. But what if you grew a forest — many little trees merging? That's Kruskal, and it's next." |
 | dropping the author's aside | keeping it whole, in his voice — or cutting it whole. Never flattened into a claim. |
 
@@ -84,9 +73,9 @@ glossary or a spoken form. The linter rejects `$` and maths glyphs in prose.
 The engine receives prose paragraphs only. A block is prose when it starts
 with a word character; a `$$` equation, a fenced listing, a `|` table, a `>`
 quotation, an image, an SVG is a **display block**. One the author refers to
-gets a spoken form right after it — the paraphrase a lecturer would say, not
-a transliteration; one without a spoken form is dropped from the audio and
-reported.
+gets a spoken form right after it, in the same paragraph — the paraphrase a
+lecturer would say, not a transliteration; one without a spoken form is
+dropped from the audio and reported.
 
 ```markdown
 $$W[i,j]^k = \min\left(W[i,j]^{k-1},\; W[i,k]^{k-1} + W[k,j]^{k-1}\right)$$
@@ -98,10 +87,8 @@ $$W[i,j]^k = \min\left(W[i,j]^{k-1},\; W[i,k]^{k-1} + W[k,j]^{k-1}\right)$$
 
 Principle 5 (`teaching.md`) applies to every sentence. Watch for: merged
 caveats, the wrong proof on the wrong result, number drift, "always/every",
-opinions the author never voiced, borrowed credit, speculative closers.
-Where the book is wrong (a mislabelled diagram, a reversed inequality), say
-the right thing, show it corrected on screen with the page, and list it under
-`<!-- corrections -->`.
+opinions the author never voiced, borrowed credit, speculative closers. Book
+errors go under `<!-- corrections -->`.
 
 ## Script format
 
@@ -145,20 +132,19 @@ that's safe…
 …
 ```
 
-- `## part: <key>` is one part of the lecture — one tab, one audio file —
-  and matches `data-part="<key>"` in the page.
+- `## part: <key>` matches `data-part="<key>"` in the page.
 - `<!-- beat: id | frame N -->` starts a beat at frame N; `<!-- beat: id -->`
-  holds (semantics: `sync-architecture.md`, "Beats start at a frame").
-- `<!-- mark: id -->` right before the words it belongs to lights `id` at
-  the first of those words; `<!-- mark: id | frame N -->` also changes the
-  slide there. Ids are whatever the page's `render(frame, mark)` understands;
-  frames named by marks increase within a beat.
-- `<!-- ask -->` right after the question's paragraph: the audio stops
-  there, the question takes the caption bar, and Play brings the next
-  paragraph — the answer, which may open with the trap ("if you said…").
-- `<!-- pause 2s -->` inside prose becomes silence (clamped to 3 s).
+  holds the frame (`sync-architecture.md`, "Beats").
+- `<!-- mark: id -->` right before the words it belongs to; `<!-- mark: id |
+  frame N -->` also changes the slide there. Ids are whatever the page's
+  `render(frame, mark)` understands; frames named by marks increase within a
+  beat.
+- `<!-- ask -->` right after the question's paragraph; the next paragraph is
+  the answer, which may open with the trap ("if you said…").
+- `<!-- pause 2s -->` inside prose becomes silence (clamped to the limit in
+  `lecture_format.py`).
 - `outline` maps every heading of `extract/outline.txt`, including the
   chapter-title line, to a part or `skip: <reason>`; invent ids for
   unnumbered sections (`19.2`, `6.notes`) and use the same ids in both.
-- `pronounce:` respellings are substituted before synthesis; subtitles keep
-  the real spelling.
+- `pronounce:` respellings are substituted before synthesis, for every
+  engine; subtitles keep the real spelling.

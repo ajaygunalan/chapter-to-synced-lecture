@@ -1,9 +1,5 @@
-"""
-Kokoro: open-weight, local, free, unlimited — the default engine, used for
-every dry run. Synthesis runs in its own virtualenv (torch lives there), so
-this module keeps one scripts/kokoro_worker.py process alive for the run
-and sends it one JSON job per line. Setup and voices: references/kokoro.md.
-"""
+"""Kokoro engine: drives one scripts/kokoro_worker.py process (its own virtualenv)
+for the whole run, one JSON job per line. Setup, device, voices: references/kokoro.md."""
 
 import atexit
 import json
@@ -66,10 +62,9 @@ def synth(paragraphs, args, tmp):
     wav, mp3 = tmp / "part.wav", tmp / "part.mp3"
     t = time.time()
     info = _run({"voice": args.voice, "speed": args.speed, "paragraphs": paragraphs, "wav": str(wav)}, args)
-    offsets = para_offsets(paragraphs)
     align = []
-    for i, (para, starts) in enumerate(zip(paragraphs, info["starts"])):
-        align += [[offsets[i] + off, s] for off, s in align_from_char_starts(para, starts)]
+    for para, starts, off0 in zip(paragraphs, info["starts"], para_offsets(paragraphs)):
+        align += align_from_char_starts(para, starts, 0.0, off0)
     ffmpeg("-i", str(wav), "-codec:a", "libmp3lame", "-b:a", "128k", str(mp3))
     print(f"    kokoro on {info['device']}: {sum(map(len, paragraphs)):,} chars -> {info['duration']:.1f}s "
           f"in {time.time() - t:.0f}s")

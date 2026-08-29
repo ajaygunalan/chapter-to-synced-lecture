@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """
 The half of the Kokoro engine (engines/kokoro.py) that runs inside the
-Kokoro virtualenv (references/kokoro.md). It lives in scripts/ so that
-lecture_format and subtitles import normally and nothing shadows the
-kokoro package. One process per build_audio run: the model loads once.
+Kokoro virtualenv. It lives in scripts/ so that lecture_format and
+subtitles import normally and nothing shadows the kokoro package.
 
     kokoro_worker.py [cuda|cpu]          jobs on stdin, one JSON per line; one JSON answer per line
 
@@ -13,9 +12,7 @@ kokoro package. One process per build_audio run: the model loads once.
         each paragraph exactly what the engine should say, pauses as
         <break time="Ns" /> tags (the same text any engine gets)
         -> {"duration": seconds, "device": …, "starts": [[per-character start
-            time of paragraph 0], [of paragraph 1], …]}
-           — the shape align_from_char_starts takes, so cues are built the
-           same way for every engine
+            time of paragraph 0], [of paragraph 1], …]}  (align_from_char_starts' input)
 """
 
 import json
@@ -41,75 +38,83 @@ def pick_device(wanted):
             "gpu": torch.cuda.get_device_name(0) if cuda else None}
 
 
+class Track:
+    """Audio pieces and the running clock; per-character start times of the current paragraph."""
+
+    def __init__(self, pipe, voice, speed):
+        import numpy as np
+        self.np, self.pipe, self.voice, self.speed = np, pipe, voice, speed
+        self.chunks, self.t, self.starts = [], 0.0, []
+
+    def silence(self, seconds):
+        n = int(seconds * RATE)
+        if n > 0:
+            self.chunks.append(self.np.zeros(n, dtype=self.np.float32))
+            self.t += n / RATE
+
+    def speak(self, piece, base):
+        """One sentence sitting at paragraph[base:]; fill starts for its chars."""
+        for r in self.pipe(piece, voice=self.voice, speed=self.speed):
+            if r.audio is None:
+                continue
+            cursor = 0
+            for tok in r.tokens or []:
+                if not tok.text or tok.start_ts is None:
+                    continue
+                at = piece.find(tok.text, cursor)
+                if at < 0:
+                    continue
+                for k in range(at, at + len(tok.text)):
+                    if self.starts[base + k] is None:
+                        self.starts[base + k] = round(self.t + float(tok.start_ts), 3)
+                cursor = at + len(tok.text)
+            audio = r.audio.cpu().numpy().astype(self.np.float32)
+            self.chunks.append(audio)
+            self.t += len(audio) / RATE
+
+    def say(self, seg, base):
+        """A stretch with no break tags: one pipeline call per sentence, so nothing
+        exceeds the model's per-call length."""
+        for i, (off, s) in enumerate(sentences_with_offsets(seg)):
+            if i:
+                self.silence(SENTENCE_GAP)
+            self.speak(s, base + off)
+
+    def paragraph(self, para):
+        """-> per-character start times for one paragraph (whitespace forward-filled)."""
+        self.starts = [None] * len(para)
+        p = 0
+        for m in BREAK_RE.finditer(para):
+            self.say(para[p:m.start()], p)
+            for k in range(m.start(), m.end()):
+                self.starts[k] = round(self.t, 3)
+            self.silence(float(m.group(1)))
+            p = m.end()
+        self.say(para[p:], p)
+        last = round(self.t, 3)
+        for i, s in enumerate(self.starts):
+            if s is None:
+                self.starts[i] = last
+            else:
+                last = s
+        return self.starts
+
+
 def synthesise(job, pipes, device):
-    import numpy as np
     import soundfile as sf
     from kokoro import KPipeline
 
     lang = "b" if job["voice"].startswith("b") else "a"
     if lang not in pipes:
         pipes[lang] = KPipeline(lang_code=lang, repo_id="hexgrad/Kokoro-82M", device=device)
-    pipe, voice, speed = pipes[lang], job["voice"], float(job.get("speed", 1.0))
-    chunks, t, all_starts = [], 0.0, []          # audio pieces and the running clock
-
-    def silence(seconds):
-        nonlocal t
-        n = int(seconds * RATE)
-        if n > 0:
-            chunks.append(np.zeros(n, dtype=np.float32))
-            t += n / RATE
-
+    track = Track(pipes[lang], job["voice"], float(job.get("speed", 1.0)))
+    all_starts = []
     for pi, para in enumerate(job["paragraphs"]):
-        starts = [None] * len(para)
         if pi:
-            silence(PARAGRAPH_GAP)
-
-        def speak(piece, base):
-            """One sentence sitting at para[base:]; fill starts for its chars."""
-            nonlocal t
-            for r in pipe(piece, voice=voice, speed=speed):
-                if r.audio is None:
-                    continue
-                audio = r.audio.cpu().numpy().astype(np.float32)
-                cursor = 0
-                for tok in r.tokens or []:
-                    if not tok.text or tok.start_ts is None:
-                        continue
-                    at = piece.find(tok.text, cursor)
-                    if at < 0:
-                        continue
-                    for k in range(at, at + len(tok.text)):
-                        if starts[base + k] is None:
-                            starts[base + k] = round(t + float(tok.start_ts), 3)
-                    cursor = at + len(tok.text)
-                chunks.append(audio)
-                t += len(audio) / RATE
-
-        def say(seg, base):
-            """A stretch with no break tags: one pipeline call per sentence, so
-            nothing exceeds the model's per-call length."""
-            for i, (off, s) in enumerate(sentences_with_offsets(seg)):
-                if i:
-                    silence(SENTENCE_GAP)
-                speak(s, base + off)
-
-        p = 0
-        for m in BREAK_RE.finditer(para):
-            say(para[p:m.start()], p)
-            for k in range(m.start(), m.end()):
-                starts[k] = round(t, 3)
-            silence(float(m.group(1)))
-            p = m.end()
-        say(para[p:], p)
-        last = round(t, 3)                        # forward-fill whitespace and dropped punctuation
-        for i in range(len(starts)):
-            if starts[i] is None:
-                starts[i] = last
-            else:
-                last = starts[i]
-        all_starts.append(starts)
-
-    audio = np.concatenate(chunks) if chunks else np.zeros(RATE // 10, dtype=np.float32)
+            track.silence(PARAGRAPH_GAP)
+        all_starts.append(track.paragraph(para))
+    np = track.np
+    audio = np.concatenate(track.chunks) if track.chunks else np.zeros(RATE // 10, dtype=np.float32)
     sf.write(job["wav"], audio, RATE)
     return {"duration": round(len(audio) / RATE, 3), "device": device, "starts": all_starts}
 

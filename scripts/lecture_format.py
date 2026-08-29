@@ -1,12 +1,10 @@
 """
-The script.md format and the output layout, in one place. build_audio.py,
-subtitles.py, lint.py and the engines import this so they cannot disagree.
-The human-readable description is references/narration-craft.md, "Script
-format"; the vocabulary (part, frame, beat, mark, ask) is SKILL.md's.
+The script.md format and the output layout, in one place; every script
+imports this so they cannot disagree. The human-readable description is
+references/narration-craft.md, "Script format".
 """
 
 import re
-import shutil
 import subprocess
 from datetime import datetime
 
@@ -24,6 +22,7 @@ COMMENT_RE = re.compile(r"<!--.*?-->", re.S)
 PAUSE_RE = re.compile(r"<!--\s*pause\s+([\d.]+)\s*s?\s*-->")
 NON_PAUSE_COMMENT_RE = re.compile(r"<!--(?!\s*pause\b).*?-->", re.S)   # what leaves prose before it is spoken
 BREAK_RE = re.compile(r'<break time="([\d.]+)s" />')                  # what a pause becomes in the engine's text
+PAUSE_MAX_S = 3                                                        # longer pauses are cut to this
 ASK_RE = re.compile(r"<!--\s*ask\s*-->")
 PROSE_START_RE = re.compile(r"""^\s*[\w"'“‘(]""")
 
@@ -45,6 +44,10 @@ def align_path(out, part):
 def text_path(out, part):
     """Exactly what the engine was given; --recue refuses a part whose words changed."""
     return out / "audio" / f"{part}.txt"
+
+
+def cues_js_path(out):
+    return out / "cues" / "cues.js"
 
 
 def stamp(out, what):
@@ -129,23 +132,34 @@ def marks_in(block):
 
 
 def blocks(raw):
-    """Paragraph-level blocks. A block that is only a spoken comment is merged
-    into the block before it, so the comment may sit after a blank line."""
-    out = []
-    for b in re.split(r"\n\s*\n", raw):
-        if not b.strip():
-            continue
-        if SPOKEN_RE.fullmatch(b.strip()) and out:
-            out[-1] += "\n" + b
-        else:
-            out.append(b)
-    return out
+    """Paragraph-level blocks (a spoken form sits inside its display block's paragraph)."""
+    return [b for b in re.split(r"\n\s*\n", raw) if b.strip()]
 
 
 def is_display_block(block):
-    """Prose starts with a word character; anything else ($$, ```, |, >, <svg,
-    ![, - list) is display-only and needs a spoken form to reach the engine."""
+    """narration-craft.md, "Display blocks and spoken forms"."""
     return not PROSE_START_RE.match(COMMENT_RE.sub("", block))
+
+
+# ---- prose -> what the engine says ----------------------------------------
+
+def prose_text(block):
+    """A prose block without its comments (pauses stay), markdown emphasis or link syntax."""
+    s = NON_PAUSE_COMMENT_RE.sub("", block)
+    s = re.sub(r"[*_`]+", "", s)
+    return re.sub(r"\[([^\]]+)\]\([^)]*\)", r"\1", s)
+
+
+def spoken_text(text, rules):
+    """Prose or a spoken form -> (what the engine gets, what the reader sees).
+    Pauses become <break> tags for the engine and vanish for the reader;
+    pronunciation respellings apply to the engine's copy only."""
+    shown = " ".join(PAUSE_RE.sub(" ", text).split())
+    spoken = PAUSE_RE.sub(lambda p: f' <break time="{min(float(p.group(1)), PAUSE_MAX_S):g}s" /> ', text)
+    spoken = " ".join(spoken.split())
+    for rx, say in rules:
+        spoken = rx.sub(say, spoken)
+    return spoken, shown
 
 
 def walk(body):
@@ -207,25 +221,11 @@ def ffmpeg(*args):
     subprocess.run(["ffmpeg", "-loglevel", "error", "-y", *args], check=True)
 
 
-try:
-    from mutagen.mp3 import MP3 as _MP3
-except ImportError:
-    _MP3 = None
-_FFPROBE = shutil.which("ffprobe")
-
-
 def duration_of(path):
     """Seconds of audio in an mp3, or None."""
-    if _MP3:
-        try:
-            return _MP3(str(path)).info.length
-        except Exception:
-            pass
-    if _FFPROBE:
-        r = subprocess.run([_FFPROBE, "-v", "error", "-show_entries", "format=duration",
-                            "-of", "csv=p=0", str(path)], capture_output=True, text=True)
-        try:
-            return float(r.stdout.strip())
-        except ValueError:
-            pass
-    return None
+    r = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration",
+                        "-of", "csv=p=0", str(path)], capture_output=True, text=True)
+    try:
+        return float(r.stdout.strip())
+    except ValueError:
+        return None

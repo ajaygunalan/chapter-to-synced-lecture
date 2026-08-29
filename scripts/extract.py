@@ -6,10 +6,9 @@ Pulls the three layers a text extractor alone loses (raster figures, page
 renders for maths and figures, an inventory of what to read by eye). What each
 output is for: references/extraction.md.
 
-    extract.py chapter.pdf --out work/extract [--all-pages] [--dpi 110]
-    extract.py chapter.pdf --out work/extract300 --pages 4,5,9-11 --dpi 300   # re-render a few pages
+    extract.py chapter.pdf --out work/extract [--all-pages] [--dpi 110] [--pages 4,5,9-11]
 
-Needs poppler (pdftotext, pdfimages, pdftoppm); falls back to pymupdf.
+Needs poppler (pdftotext, pdfimages, pdftoppm).
 """
 
 import argparse
@@ -33,69 +32,50 @@ HEADING_RE = re.compile(r"^[ \t]*(\d+(?:\.\d+){0,3})\s+([A-Z][^\n]{2,80}?)\s*$",
 CAPS_HEADING_RE = re.compile(r"^[ \t]*([A-Z][A-Z '\-:]{6,60})\s*$", re.M)
 
 
-def have(tool):
-    return shutil.which(tool) is not None
-
-
 def unspace(text):
     """Some books set captions letter-spaced ("F i g u r e 13.1"); collapse those runs."""
     return LETTERSPACED_RE.sub(lambda m: m.group().replace(" ", ""), text)
 
 
-def page_texts(pdf, doc):
-    if have("pdftotext"):
-        r = subprocess.run(["pdftotext", "-layout", str(pdf), "-"], capture_output=True, text=True, check=True)
-        pages = r.stdout.split("\f")[:-1] or [r.stdout]
-    else:
-        pages = [p.get_text("text") for p in doc]
-    return [unspace(t) for t in pages]
+def page_texts(pdf):
+    r = subprocess.run(["pdftotext", "-layout", str(pdf), "-"], capture_output=True, text=True, check=True)
+    return [unspace(t) for t in (r.stdout.split("\f")[:-1] or [r.stdout])]
 
 
-def extract_images(pdf, doc, out):
+def extract_images(pdf, out):
     """-> [(file, page, w, h)]"""
     out.mkdir(parents=True, exist_ok=True)
-    if have("pdfimages"):
-        r = subprocess.run(["pdfimages", "-list", str(pdf)], capture_output=True, text=True)
-        meta = []
-        for line in r.stdout.splitlines()[2:]:
-            c = line.split()
-            if len(c) >= 5 and c[0].isdigit():
-                meta.append((int(c[0]), int(c[3]), int(c[4])))
-        subprocess.run(["pdfimages", "-png", "-p", str(pdf), str(out / "img")], check=True)
-        files = sorted(out.glob("img-*.png"))
-        return [(f, p, w, h) for f, (p, w, h) in zip(files, meta)]
-    import fitz
-    result = []
-    for pno, page in enumerate(doc, 1):
-        for i, info in enumerate(page.get_images(full=True)):
-            pix = fitz.Pixmap(doc, info[0])
-            if pix.n - pix.alpha >= 4:
-                pix = fitz.Pixmap(fitz.csRGB, pix)
-            f = out / f"img-{pno:03d}-{i:03d}.png"
-            pix.save(str(f))
-            result.append((f, pno, pix.width, pix.height))
-    return result
+    r = subprocess.run(["pdfimages", "-list", str(pdf)], capture_output=True, text=True)
+    meta = []
+    for line in r.stdout.splitlines()[2:]:
+        c = line.split()
+        if len(c) >= 5 and c[0].isdigit():
+            meta.append((int(c[0]), int(c[3]), int(c[4])))
+    subprocess.run(["pdfimages", "-png", "-p", str(pdf), str(out / "img")], check=True)
+    files = sorted(out.glob("img-*.png"))
+    return [(f, p, w, h) for f, (p, w, h) in zip(files, meta)]
 
 
-def render_pages(pdf, doc, pages, out, dpi):
+def render_pages(pdf, pages, out, dpi):
     out.mkdir(parents=True, exist_ok=True)
     if not pages:
         return
-    if have("pdftoppm"):
-        # one call per contiguous run; pdftoppm names files <root>-<page>.png
-        runs, start = [], pages[0]
-        for a, b in zip(pages, pages[1:] + [None]):
-            if b != a + 1:
-                runs.append((start, a))
-                start = b
-        for a, b in runs:
-            subprocess.run(["pdftoppm", "-r", str(dpi), "-f", str(a), "-l", str(b), "-png",
-                            str(pdf), str(out / "p")], check=True)
-        for f in out.glob("p-*.png"):
-            f.rename(out / f"p{int(f.stem.split('-')[1]):03d}.png")
-    else:
-        for p in pages:
-            doc[p - 1].get_pixmap(dpi=dpi).save(str(out / f"p{p:03d}.png"))
+    # one call per contiguous run; pdftoppm names files <root>-<page>.png
+    runs, start = [], pages[0]
+    for a, b in zip(pages, pages[1:] + [None]):
+        if b != a + 1:
+            runs.append((start, a))
+            start = b
+    for a, b in runs:
+        subprocess.run(["pdftoppm", "-r", str(dpi), "-f", str(a), "-l", str(b), "-png",
+                        str(pdf), str(out / "p")], check=True)
+    for f in out.glob("p-*.png"):
+        f.rename(out / f"p{int(f.stem.split('-')[1]):03d}.png")
+
+
+def numbered(refs):
+    """'6.3', '6.10' sorted as numbers, not strings."""
+    return sorted(set(refs), key=lambda s: [int(x) for x in s.split(".")])
 
 
 def analyse(text, n_images):
@@ -149,30 +129,28 @@ def main():
     if not pdf.exists():
         sys.exit(f"no such file: {pdf}")
     out.mkdir(parents=True, exist_ok=True)
+    for tool in ("pdftotext", "pdfimages", "pdftoppm"):
+        if not shutil.which(tool):
+            sys.exit(f"{tool} not found: install poppler-utils")
     if not args.pages:
-        stamp(out.parent, "started")           # the run's clock: <outdir>/run.log
-
-    doc = None
-    if not (have("pdftotext") and have("pdfimages") and have("pdftoppm")):
-        import fitz
-        doc = fitz.open(str(pdf))
+        stamp(out.parent, "started")
 
     if args.pages:
         wanted = set()
         for part in args.pages.split(","):
             a, _, b = part.partition("-")
             wanted.update(range(int(a), int(b or a) + 1))
-        render_pages(pdf, doc, sorted(wanted), out / "pages", args.dpi)
+        render_pages(pdf, sorted(wanted), out / "pages", args.dpi)
         print(f"rendered pages {sorted(wanted)} at {args.dpi} dpi into {out / 'pages'}")
         return
 
-    pages = page_texts(pdf, doc)
+    pages = page_texts(pdf)
     full = "\n\f\n".join(pages)
     (out / "text.txt").write_text(full)
     heads = headings(full)
     (out / "outline.txt").write_text("\n".join(heads) + "\n")
 
-    images = extract_images(pdf, doc, out / "images")
+    images = extract_images(pdf, out / "images")
     per_page = defaultdict(int)
     for _, p, w, h in images:
         if w >= 80 and h >= 80:
@@ -180,14 +158,13 @@ def main():
 
     flags = {p: analyse(t, per_page[p]) for p, t in enumerate(pages, 1)}
     to_render = [p for p in flags if args.all_pages or flags[p]]
-    render_pages(pdf, doc, to_render, out / "pages", args.dpi)
+    render_pages(pdf, to_render, out / "pages", args.dpi)
 
     by_flag = defaultdict(list)
     for p, fl in flags.items():
         for f in fl:
             by_flag[f].append(p)
-    fig_refs = sorted(set(FIGURE_RE.findall(full)), key=lambda s: [int(x) for x in s.split(".")])
-    tab_refs = sorted(set(TABLE_RE.findall(full)), key=lambda s: [int(x) for x in s.split(".")])
+    fig_refs, tab_refs = numbered(FIGURE_RE.findall(full)), numbered(TABLE_RE.findall(full))
     n_eq = len(NUMBERED_EQ_RE.findall(full))
 
     inv = [f"# Extraction inventory — {pdf.name}", "",
@@ -199,8 +176,6 @@ def main():
            f"- table captions: {', '.join(tab_refs) or 'none'}",
            "", "## Pages by flag", ""]
     inv += [f"- **{k}**: {v}" for k, v in sorted(by_flag.items())] or ["- (nothing flagged)"]
-    inv += ["", "## Heading candidates (heuristic; also in outline.txt)", ""]
-    inv += [f"- {h}" for h in heads] or ["- (none matched; read text.txt for the section tree)"]
     if images:
         inv += ["", "## Images (sizes only — small or wide-and-short ones are often cartoons/decoration)", "",
                 "| file | page | size |", "|---|---|---|"]

@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """
 lecture.src.html -> lecture.html: inline the player assets, embed local images,
-render the maths. Run again whenever the source changes; the cues are loaded at
-runtime from cues/cues.js, so audio rebuilds never touch the page.
+render the maths. Run again whenever the source changes.
 
     build_page.py lecture.src.html -o lecture.html
 
@@ -20,8 +19,8 @@ import re
 import sys
 from pathlib import Path
 
-from render_math import render_html
 from lecture_format import stamp
+from render_math import cache_path, render_html, report
 
 HERE = Path(__file__).resolve().parent
 ASSETS = HERE.parent / "assets"
@@ -36,8 +35,7 @@ def main():
     args = ap.parse_args()
 
     page = args.src.read_text()
-    if "cues/cues.js" not in page:
-        page = re.sub(r"<script>(\s*)\{\{PLAYER_JS\}\}", CUES_TAG + r"\n<script>\1{{PLAYER_JS}}", page, count=1)
+    page = re.sub(r"<script>(\s*)\{\{PLAYER_JS\}\}", CUES_TAG + r"\n<script>\1{{PLAYER_JS}}", page, count=1)
     page = page.replace("{{PLAYER_CSS}}", (ASSETS / "player.css").read_text())
     page = page.replace("{{PLAYER_JS}}", (ASSETS / "player.js").read_text())
 
@@ -49,12 +47,11 @@ def main():
         return f"data:{mime};base64," + base64.b64encode(f.read_bytes()).decode()
 
     page, n_img = IMG_RE.subn(embed, page)
-    page, n_math, errors = render_html(page, args.out.with_suffix(args.out.suffix + ".math-cache.json"))
+    page, n_math, errors = render_html(page, cache_path(args.out))
     args.out.write_text(page)
     stamp(args.out.parent, "page")
     print(f"{args.out}: assets inlined, {n_img} image(s) embedded, {n_math} maths expression(s), {len(page):,} bytes")
-    for tex, err in errors:
-        print(f"  ! {tex[:60]!r}: {err[:120]}", file=sys.stderr)
+    report(errors)
     sys.exit(1 if errors else 0)
 
 

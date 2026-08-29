@@ -36,44 +36,24 @@ is still one part: frames are opaque, so a part may mix a computed run,
 authored diff frames, and a question in sequence.
 
 If your classification comes out uniform across a varied chapter, you are
-pattern-matching to the subject. The mix on three test chapters:
+pattern-matching to the subject.
 
-- **Skiena, weighted graphs** — procedure and argument, with a
-  representation (matching → flow), a transformation (the three lines that
-  turn Prim into Dijkstra), six Stop-and-Think exercises, and war stories as
-  voice-only case studies. Frames computed by running each algorithm on the
-  chapter's own Figure 6.3 graph, which recurs as the flow example; invent a
-  graph only where the author gives none (Floyd).
-- **Martin, SOLID principles** — almost no code. Design evolution,
-  architecture, and dependency overlay: UML that passes through four
-  versions, one diagram annotated across three subsections, control-flow
-  arrows against dependency arrows.
-- **Dorst et al., conformal model** — derivation and representation are
-  roughly sixty percent; definitions are equations; two sections are genuine
-  geometric constructions (double reflection, screw decomposition); ten
-  drills, ten structural exercises, four programming examples.
-
-## What a frame is, and what a mark does to it
+## What a frame is
 
 A frame is one canvas (`.slide`): whatever that moment needs — a diagram,
 a listing, both, a table — composed on it and sized to be read from across
-a room. No permanent sidebar. No caption of the page's own under the slide:
-the words being spoken are already there, and a second line of text fights
-them. Code is a drawing like any other: when the voice is on the code, the
-code fills the slide and the diagram shrinks or leaves — never a 0.7 rem
-listing in a sidebar with the important line cut off behind a scrollbar. A
-listing that does not fit at readable size is split across frames, never
-shrunk. The player draws the slide number and the fullscreen button onto the
-`.slide`; the page draws everything else.
+a room. No permanent sidebar; no caption of the page's own under the slide
+(the words being spoken are already there). Code is a drawing like any
+other: when the voice is on the code, the code fills the slide and the
+diagram shrinks or leaves. A listing that does not fit at readable size is
+split across frames, never shrunk.
 
-`render(frame, mark)` is called with the frame and, within it, the id of the
-thing the voice is naming right now (`sync-architecture.md`, "Marks"), or
-`null`. The page decides what lit means for each kind of thing it draws —
-an edge in the accent colour, a table cell flashed, a code line brought into
-focus while the rest dims, a bullet revealed, a term boxed — and keeps the
-vocabulary of ids small and stable across the part: `edge-AB`, `line-27`,
-`cell-1-4`, `bullet-3`, `next` (advance the reveal by one). The frames give
-the state; the marks give the eye its place in it.
+`render(frame, mark)` receives the frame and the id of the thing the voice
+is naming right now, or `null` (`sync-architecture.md`, "Marks"). Give the
+part a small, stable vocabulary of ids — `edge-AB`, `line-27`, `cell-1-4`,
+`bullet-3`, `next` (advance the reveal by one) — and decide what lit means
+for each kind of thing the page draws. The frames give the state; the marks
+give the eye its place in it.
 
 ## Code on slides
 
@@ -81,9 +61,8 @@ Before/after is one frame that changes, the way the diagrams already do:
 the same listing, the changed lines lit (`.line.hl`), the wrong ones
 `.line.bad`, the fix `.line.good`, the rest `.line.dim` when the eye
 should skip it — not two blocks the listener has to diff. Colouring comes
-from `highlightCode(text, lang)` in `player.js` (keywords, types, strings,
-numbers, comments), the same palette in every chapter, and the teaching
-marks sit on top of it:
+from `highlightCode(text, lang)` in `player.js`, and the teaching marks sit
+on top of it:
 
 ```js
 pre.className = 'code';
@@ -92,36 +71,20 @@ pre.innerHTML = lines.map(function (l, i) {
 }).join('');            // .line is display:block — no newline between them
 ```
 
-A mark on a line (`line-27`) lights that line the moment it is spoken —
-`.line.lit`, styled by the player — so a listing can sit on screen whole
-while the voice walks it.
+Build the listing once; a mark on a line (`line-27`) toggles `.line.lit` in
+`render`, so a listing can sit on screen whole while the voice walks it.
 
-The book's own code stays exactly as the book prints it. Staged code — the
-examples the lecture writes — is C++ in the house style:
-
-- 4-space indent, K&R braces (`{` on the same line), `for(`/`if(`/`while(`
-  with no space before the paren, packed loop headers
-  (`for(int i=0; i<n; i++)`), spaces around `=` `==` `&&` `||`
-- no optional braces: `if(!node) return;` on one line; single-statement
-  bodies unbraced; a `for/for/if` cascade runs unbraced
-- camelCase; `i j r c` for indices, `n m rows cols` for sizes; the answer is
-  `result`; helpers named for what they do (`dfs`, `backtrack`)
-- range-for and structured bindings (`for(auto [r, c] : cells)`); `auto`
-  there and nowhere else; plain `int`; C++20 freely (`ranges::sort`,
-  `contains`)
-- state that several helpers share lives in members, `private:` first
-- `//` comments above the line, lowercase, only where the invariant is not
-  obvious — one *why*, never a label of what the line does
-- as small as still shows the failure; whitespace between phases, not
-  between every line
+The book's own code stays exactly as the book prints it. Code the lecture
+writes is as small as still shows the failure, in the house style of
+`code-style.md`.
 
 ## Which sections earn a part
 
 Give a stretch of the plan its own part when the slide shows something prose
-cannot say compactly (a change over time, a spatial relationship, a shape in data, a
-diagram that differs from its previous version), when it is load-bearing for
-the chapter's argument, or when the author gave it a figure, table, listing,
-or worked example of its own.
+cannot say compactly (a change over time, a spatial relationship, a shape in
+data, a diagram that differs from its previous version), when it is
+load-bearing for the chapter's argument, or when the author gave it a
+figure, table, listing, or worked example of its own.
 
 Leave a section **voice-only with a static visual** when it is motivational,
 discursive, historical, a list of rules with no process behind them, or a
@@ -132,5 +95,4 @@ When several sibling subsections annotate the same diagram or formula, build
 **one** part spanning them and map each section to it in the outline.
 
 A part gets as many beats as it has distinct ideas — not as many as it has
-frames — and as many stops as the listener has things to predict. It is as
-long as those take.
+frames.
