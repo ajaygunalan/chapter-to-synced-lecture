@@ -9,7 +9,7 @@ type: feature
 `with-timestamps` request returns 200 with a `request-id` header and per-character alignment
 whose last end time matches the MP3 duration — the whole audio pipeline works.
 
-**2026-08-27 later:** quota exhausted (40,000/month; 325 left) after ~40k credits across three chapters. Needs top-up or next cycle. Rate observed: 0.5 credit/char.
+**Quota:** 121,325 credits a month at 0.55 credits per character on eleven_multilingual_v2 — about 28k per chapter, so roughly four chapters fit in a cycle.
 
 **Remaining:** the key was created without the `voices_read` and `user_read` scopes, so
 `build_audio.py --check --engine elevenlabs` reports the missing scopes (verified 2026-08-28: `user_read`, `models_read`). Either:

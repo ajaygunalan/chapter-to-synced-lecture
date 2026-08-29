@@ -9,11 +9,18 @@ from `text.txt`.**
 ```
 extract/
 ├── text.txt        pdftotext -layout, pages separated by form feeds; prose is reliable
-├── outline.txt     heading candidates, one per line
+├── outline.txt     heading candidates, one per line — weak, see below
 ├── images/         every embedded raster (pdfimages): UML, photographs, plots
 ├── pages/          pNNN.png render of each flagged page
 └── inventory.md    counts, pages grouped by flag, image table
 ```
+
+`outline.txt` is a heuristic over numbered headings, and it misses whole
+chapters: a book whose sections are unnumbered Title Case yields nothing at
+all, and even a numbered one usually yields about half. Read the section
+headings out of `text.txt` yourself and hand-correct the file before writing
+the plan — the outline block in `script.md` is checked against it, so a short
+outline silently weakens that check.
 
 Pages are flagged for: raster images, numbered equations or dense maths,
 lossy glyphs, tables, figure captions, code listings. The default render
