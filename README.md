@@ -1,39 +1,54 @@
 # chapter-to-synced-lecture
 
 A [Claude Code](https://claude.com/claude-code) skill that turns a book chapter
-(PDF) into a lecture given by its author.
+(PDF) into a **video lecture**: narration plus slides that animate along with
+it, given in the voice of the book's own author.
 
-You get one self-contained HTML page: slides the narration drives, questions the
-audio stops on so you can think, word-synced captions, and a picture that lights
-whatever the voice is naming at that moment.
+It comes out as one self-contained web page you open in a browser — not an MP4,
+but it plays like one, and you can pause, scrub, jump to any slide, or read the
+transcript.
 
-The voice runs locally on **[Kokoro](https://huggingface.co/hexgrad/Kokoro-82M)**
-— free, unlimited, about a minute of GPU time for an hour of narration. ElevenLabs
-is optional, for a final take once the words are settled.
+**No API key needed.** The voice runs on your own machine with
+[Kokoro](https://huggingface.co/hexgrad/Kokoro-82M): free, unlimited, about a
+minute of GPU time for an hour of narration. ElevenLabs is optional, if you want
+a paid voice for a final take.
 
-## What it does
+## What you get
 
-Five steps, from a PDF to a page open in your browser:
+- **Slides that animate with the voice.** When the narration says "A to B, for
+  five," that edge lights up at that word.
+- **Questions it stops on.** The audio pauses on a question and waits. Press
+  play when you have an answer.
+- **Captions in sync**, word by word, plus a full transcript you can click to
+  jump anywhere.
+- **Slides that show real runs.** If the chapter has an algorithm, the page
+  contains a working copy of it and *runs* it to make the slides. So the picture
+  can never disagree with the algorithm, and the narration is written from what
+  the slides actually produced.
+
+## How it works
+
+Five steps, from PDF to a lecture open in your browser:
 
 | | |
 |---|---|
-| **Read** | pull out the text, the figures, and page renders of anything the text layer mangles |
-| **Plan** | decide what each part is for: the trouble it opens on, the example that carries it |
-| **Slides** | build the deck — where an algorithm or construction is involved, frames are *computed by running it*, not drawn by hand |
-| **Script** | write the narration from what the slides actually computed, then a fresh reader checks where it loses a newcomer |
-| **Record** | synthesise the audio and time every cue to the spoken word |
+| **Read** | pull out the text and figures, and render any page the text layer mangles |
+| **Plan** | work out what each part is for: the problem it opens on, the example that carries it |
+| **Slides** | build the deck |
+| **Script** | write the narration, then have a fresh reader find where it loses a newcomer |
+| **Record** | make the audio and time every cue to the spoken word |
 
-It is not a template. The lecture is built from the chapter's own argument,
-examples and figures, so it works on algorithms, software design, mathematics,
-economics — whatever the chapter is.
+It is not a template. Each lecture is built from that chapter's own argument,
+examples and figures — so it works on algorithms, software design, mathematics,
+economics, whatever the chapter happens to be.
 
 ## Requirements
 
 - Claude Code
-- `poppler-utils` (`pdftotext`, `pdfimages`, `pdftoppm`), `ffmpeg`, `chromium`
-- Kokoro in a virtualenv — see [`references/kokoro.md`](references/kokoro.md).
-  An NVIDIA GPU makes it fast; CPU still beats real time.
-- Optional: an ElevenLabs API key, for the paid final voice
+- `poppler-utils`, `ffmpeg`, `chromium`
+- Kokoro in a virtualenv — [`references/kokoro.md`](references/kokoro.md).
+  An NVIDIA GPU makes it fast; a CPU still beats real time.
+- Optional: an ElevenLabs key for the paid voice
   ([`references/elevenlabs.md`](references/elevenlabs.md))
 
 ## Install
@@ -43,27 +58,28 @@ git clone https://github.com/ajaygunalan/chapter-to-synced-lecture
 ln -s "$PWD/chapter-to-synced-lecture" ~/.claude/skills/chapter-to-synced-lecture
 ```
 
-Then, in Claude Code:
+Then in Claude Code:
 
 ```
 /chapter-to-synced-lecture @Ch06_Weighted_Graph_Algorithms.pdf
 ```
 
-Optionally add a note about what you already know, or what to focus on.
+You can add a note about what you already know, or what to focus on.
 
 ## What's inside
 
 ```
 SKILL.md      the recipe: five steps, in order
-references/   the how-to: teaching principles, slide treatments, writing for
-              the ear, the page/audio contract, PDF extraction, the two engines
-scripts/      the tools: extract, build the page, lint, synthesise, time the run
-assets/       player.js + player.css, copied into every lecture it builds
+references/   how to teach, what a slide should show, how to write for the ear,
+              how the page and audio stay in step, what PDFs lose, the voices
+scripts/      the tools: extract, build, check, synthesise
+assets/       the player copied into every lecture it builds
 ```
 
-`references/teaching.md` is the contract everything else serves: put the
-listener inside the problem before naming the idea, ask before telling, let the
-slide show what is true right now while the voice says what it means.
+[`references/teaching.md`](references/teaching.md) is the rule everything else
+serves: put the listener inside the problem before naming the idea, ask before
+telling, and let the slide show what is true right now while the voice says what
+it means.
 
 ## Licence
 
