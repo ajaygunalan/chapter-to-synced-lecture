@@ -14,19 +14,30 @@ anything else.
 ## The run
 
 ```
- 1 READ     extract.py ─▶ extract/         the text, the figures, the pages to look at
- 2 PLAN     plan.md                        the teaching decisions, never shown
- 3 SLIDES   lecture.src.html ─▶ lecture.html ─▶ screenshots · page_index.py --text
- 4 SCRIPT   script.md ─▶ lint.py ─▶ cold-read review ─▶ fix ─▶ lint.py
- 5 RECORD   build_audio.py ─▶ audio/ + cues/ ─▶ lint.py ─▶ open.py
+                    ┌─ nothing at <pdf-dir>/lectures/<slug>/ ──▶ BUILD it
+   <chapter.pdf> ───┤
+                    └─ it is already there ───────────────────▶ REVISE it
+
+BUILD   1 READ    extract.py ─▶ extract/    the text, the figures, the pages to look at
+        2 PLAN    plan.md                   the teaching decisions, never shown
+        3 SLIDES  lecture.src.html ─▶ lecture.html ─▶ screenshots · page_index.py --text
+        4 SCRIPT  script.md ─▶ lint.py ─▶ cold-read review ─▶ fix ─▶ lint.py
+        5 RECORD  build_audio.py ─▶ audio/ + cues/ ─▶ lint.py ─▶ open.py
+                  ─▶ the user listens
+
+REVISE    read    the script's header, the one part, that part's frames
+          teach   the doubt, in the chat, until the listener says it lands
+          edit    script.md for words, lecture.src.html for a slide
+          build   only what changed — that part's audio, or --recue, or the page
 ```
 
-One shot from PDF to a lecture opened in the browser, and `open.py` prints
-where the time went. Nothing is shown for approval on the way; the approval
-is the listening at the end, and what happens after it the user says
-("Revising", below).
-Nothing is reported beyond one sentence if a piece of the chapter could not
-be used.
+A build is one shot from PDF to a lecture open in the browser, and `open.py`
+prints where the time went. Nothing is shown for approval on the way; the
+approval is the listening at the end. Nothing is reported beyond one sentence
+if a piece of the chapter could not be used.
+
+A revision is the opposite in every respect: nothing runs until the listener
+asks for it, and only what they asked about is rebuilt.
 
 Each phase is stamped as it finishes (`scripts/stamp.py <outdir> <phase>`);
 `extract.py`, `build_audio.py` and `open.py` stamp their own.
@@ -42,9 +53,16 @@ The PDF is the address of its own lecture: the output always sits at
 `<pdf-dir>/lectures/<chapter-slug>/`, so one invocation covers both jobs.
 
 - **No such directory** — build it: the five steps below.
-- **It is there** — do not rebuild. Read `run.log` and `script.md`'s header,
-  say what exists (the parts, when each was recorded, by which engine), and
-  ask which part to work on. Then "Revising", below.
+- **It is there** — do not rebuild, and do not re-read the chapter. Read
+  `run.log` and `script.md`'s header; say what exists — the parts, when each
+  was recorded, by which engine — and ask which part to work on. Then
+  "Revising", below.
+
+Reading a part means reading its words and its slides *as text*: that part of
+`script.md`, and that part in `frames.txt`. The audio and the page are for
+the listener, not for you — `audio/<part>.txt` is the record of what was
+actually spoken, and `plan.md` says why the part was shaped that way if the
+conversation needs it.
 
 Building again from scratch means deleting that directory first. Nothing else
 triggers one, so coming back to a chapter weeks later resumes it instead of
@@ -204,6 +222,8 @@ paid recording is never overwritten by a later free one (`build_audio.py
 Setup and voices: `references/elevenlabs.md`; with no key, stop and say so. If `build_audio.py --check` fails, `references/kokoro.md`.
 
 ## Revising
+
+Nothing is regenerated unless the conversation changed it.
 
 The listening is the review, and it comes back one tab at a time. A part is
 self-contained — one stretch of `script.md`, one `audio/<part>.mp3`, one
