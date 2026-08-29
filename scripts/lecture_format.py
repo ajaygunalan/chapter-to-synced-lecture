@@ -1,12 +1,8 @@
 """
 The script.md format and the output layout, in one place. build_audio.py,
-subtitles.py and lint.py import this so they cannot disagree. The
-human-readable description is references/narration-craft.md, "Script format".
-
-Vocabulary: a PART is one tab of the lecture with one audio file; a FRAME is
-one slide; a BEAT is one idea in the narration, starting at a frame; an ASK
-is a stop — the audio pauses after the question so the listener can think,
-and Play brings the answer.
+subtitles.py, lint.py and the engines import this so they cannot disagree.
+The human-readable description is references/narration-craft.md, "Script
+format"; the vocabulary (part, frame, beat, mark, ask) is SKILL.md's.
 """
 
 import re
@@ -18,12 +14,15 @@ MATH_GLYPHS = "∞⌋⌊∧∨∑∏∫√∂∇≠≤≥≈→↦⊗⊕½¼¾²
 
 PART_RE = re.compile(r"^##\s*part:\s*(\S+)\s*$", re.M)
 BEAT_RE = re.compile(r"<!--\s*beat:\s*(\S+)((?:\s*\|[^>]*?)*)\s*-->")
+MARK_RE = re.compile(r"<!--\s*mark:\s*(\S+?)\s*((?:\|[^>]*?)?)\s*-->")
 FRAME_RE = re.compile(r"\|\s*frame\s+(\d+)")
 SPOKEN_RE = re.compile(r"<!--\s*spoken:\s*(.*?)-->", re.S)
 PRONOUNCE_RE = re.compile(r"<!--\s*pronounce:\s*(.*?)-->", re.S)
 OUTLINE_RE = re.compile(r"<!--\s*outline\s*\n(.*?)-->", re.S)
 COMMENT_RE = re.compile(r"<!--.*?-->", re.S)
 PAUSE_RE = re.compile(r"<!--\s*pause\s+([\d.]+)\s*s?\s*-->")
+NON_PAUSE_COMMENT_RE = re.compile(r"<!--(?!\s*pause\b).*?-->", re.S)   # what leaves prose before it is spoken
+BREAK_RE = re.compile(r'<break time="([\d.]+)s" />')                  # what a pause becomes in the engine's text
 ASK_RE = re.compile(r"<!--\s*ask\s*-->")
 PROSE_START_RE = re.compile(r"""^\s*[\w"'“‘(]""")
 
@@ -40,6 +39,11 @@ def cue_path(out, part):
 
 def align_path(out, part):
     return out / "cues" / f"{part}.align.json"
+
+
+def text_path(out, part):
+    """Exactly what the engine was given; --recue refuses a part whose words changed."""
+    return out / "audio" / f"{part}.txt"
 
 
 def para_offsets(paragraphs):
@@ -66,17 +70,29 @@ def parse_parts(text):
     return header, parts
 
 
+def _frame(opts):
+    """The '| frame N' option of a beat or mark comment, or None."""
+    fr = FRAME_RE.search(opts or "")
+    return int(fr.group(1)) if fr else None
+
+
 def parse_beats(body):
     """-> [(beat, raw text that follows it)]; the first entry's beat may be None.
     beat = {"id", "frame": int|None}."""
     pieces, pending, cursor = [], None, 0
     for m in BEAT_RE.finditer(body):
         pieces.append((pending, body[cursor:m.start()]))
-        fr = FRAME_RE.search(m.group(2) or "")
-        pending = {"id": m.group(1), "frame": int(fr.group(1)) if fr else None}
+        pending = {"id": m.group(1), "frame": _frame(m.group(2))}
         cursor = m.end()
     pieces.append((pending, body[cursor:]))
     return pieces
+
+
+def marks_in(block):
+    """Marks inside a prose block, in order: [{"id", "frame": int|None, "pos": char
+    index in the raw block where the mark's comment starts}]. The mark belongs to
+    the first word after it."""
+    return [{"id": m.group(1), "frame": _frame(m.group(2)), "pos": m.start()} for m in MARK_RE.finditer(block)]
 
 
 def blocks(raw):
@@ -104,7 +120,7 @@ def walk(body):
     -> [(beat, items)] where each item is
          ("ask",)                       the audio stops after the block before it
          ("display", block, spoken)     spoken is the <!-- spoken --> text or None
-         ("prose", block)"""
+         ("prose", block)               marks, pauses and other comments still inside"""
     out = []
     for beat, raw in parse_beats(body):
         items = []
@@ -152,7 +168,11 @@ def parse_outline(header):
     return out
 
 
-# ---- audio length -----------------------------------------------------------
+# ---- audio tools ------------------------------------------------------------
+
+def ffmpeg(*args):
+    subprocess.run(["ffmpeg", "-loglevel", "error", "-y", *args], check=True)
+
 
 try:
     from mutagen.mp3 import MP3 as _MP3

@@ -1,12 +1,14 @@
 /* Audio-synced slides. audio.currentTime is the only clock; the current
- * frame is derived from it on every animation tick. With audio:null it is a
- * manual stepper. Contract: references/sync-architecture.md.
+ * frame and the current mark are derived from it on every animation tick.
+ * With audio:null it is a manual stepper. Contract: references/sync-architecture.md.
  *
  * Navigation moves the position; Play decides whether sound comes out:
  * ← → step frames (seek, never auto-play), Space play/pause, Shift+← → ±10 s,
- * F fullscreen, 1–9 parts. An ask pauses the audio; Play resumes. */
+ * F or the ⛶ button fullscreen, 1–9 parts. An ask pauses the audio and takes
+ * the caption bar; Play resumes. */
 function createSyncedPlayer(o) {
   function nonEmpty(a) { return a && a.length ? a : null; }
+  function byT(a, b) { return a.t - b.t; }
   function lastAt(arr, t) {            // index of the last element with .t <= t
     var lo = 0, hi = arr.length - 1;
     while (lo < hi) { var mid = (lo + hi + 1) >> 1; if (arr[mid].t <= t) lo = mid; else hi = mid - 1; }
@@ -16,36 +18,51 @@ function createSyncedPlayer(o) {
       audio  = o.audio || null,
       beats  = audio ? nonEmpty(o.beats) : null,
       subs   = audio ? nonEmpty(o.subs) : null,
-      asks   = audio && nonEmpty(o.questions) ? o.questions.slice().sort(function (a, b) { return a.t - b.t; }) : null,
+      marks  = audio && nonEmpty(o.marks) ? o.marks.slice().sort(byT) : null,
+      asks   = audio && subs && nonEmpty(o.questions) ? o.questions.slice().sort(byT) : null,   // an ask needs the caption bar
       timeline = !!beats,
       last   = frames.length - 1,
       single = frames.length <= 1,
-      idx = -1, beatIdx = -1, litTick = null, rafId = null;
+      idx = -1, curMark = null, beatIdx = -1, litTick = null, rafId = null;
 
-  // ---- derived timeline: one row per (beat, frame) with its start time ----
-  // A beat runs from its start frame up to the next beat's start frame; a
-  // beat with frame:null holds. Rows are sorted by time, so playback is a
-  // cursor walk and seeking is a binary search.
+  // ---- derived timeline: one row per (time, frame, beat) ---------------------
+  // A beat runs from its start frame up to the next beat's start frame. If the
+  // beat's marks name frames, frames change exactly on those marks; otherwise
+  // the frames are spread evenly across the beat (a guess the linter reports).
+  // A beat with frame:null holds. Rows are sorted by time.
   var rows = [];
   if (beats) {
     var cur = 0;
     beats.forEach(function (b, k) {
-      var a, z;
+      var a, z, bEnd = k + 1 < beats.length ? beats[k + 1].t : Infinity;
       if (b.frame == null) { a = z = cur; }
       else {
         a = b.frame; z = last;
         for (var j = k + 1; j < beats.length; j++) if (beats[j].frame != null) { z = Math.max(a, beats[j].frame - 1); break; }
         if (z > last) { console.warn('beat ' + b.id + ' reaches frame ' + z + ' but only ' + frames.length + ' exist'); z = last; }
       }
-      var n = z - a + 1, span = (b.end || b.t) - b.t;
-      for (var s = a; s <= z; s++) rows.push({ t: b.t + span * (s - a) / n, frame: s, beat: k });
+      var fm = marks ? marks.filter(function (m) { return m.frame != null && m.t >= b.t && m.t < bEnd; }) : [];
+      if (fm.length) {
+        rows.push({ t: b.t, frame: a, beat: k });
+        fm.forEach(function (m) { rows.push({ t: m.t, frame: Math.min(m.frame, last), beat: k }); });
+        z = Math.max(z, Math.min(fm[fm.length - 1].frame, last));
+      } else {
+        var n = z - a + 1, span = (b.end || b.t) - b.t;
+        for (var s = a; s <= z; s++) rows.push({ t: b.t + span * (s - a) / n, frame: s, beat: k });
+      }
       cur = z;
     });
+    rows.sort(byT);
   }
   function rowAt(t) { return rows[lastAt(rows, t)]; }
   function timeOfFrame(i) {
     for (var r = 0; r < rows.length; r++) if (rows[r].frame === i) return rows[r].t;
     return 0;
+  }
+  function markAt(t, beatT) {          // the last mark said within the current beat, or null
+    if (!marks) return null;
+    var m = marks[lastAt(marks, t)];
+    return m.t <= t && m.t >= beatT ? m.id : null;
   }
   function nameOf(i) { return frames[i].label || ('Step ' + (i + 1)); }
 
@@ -115,9 +132,9 @@ function createSyncedPlayer(o) {
   frameNo.className = 'frame-no';
   (o.slide || o.mount).appendChild(frameNo);
 
-  var ribbon = o.ribbon || document.createElement('div');
+  var ribbon = document.createElement('div');
   ribbon.className = 'ribbon';
-  if (!o.ribbon) o.mount.parentNode.insertBefore(ribbon, o.mount.nextSibling);
+  o.mount.parentNode.insertBefore(ribbon, o.mount.nextSibling);
   ribbon.hidden = single;
   var ticks = frames.map(function (s, i) {
     var t = document.createElement('button');
@@ -130,7 +147,7 @@ function createSyncedPlayer(o) {
     return t;
   });
 
-  // ---- captions: caption bar under the slide, transcript given to the page -----
+  // ---- captions: the sentence under the slide, then the transcript under that -----
   // subs: [{t, end, text, words: [[t, word], …]}] from cues/<part>.json.
   var caption = null, transcript = null, subEls = [], subIdx = -1, wordIdx = -1, userScrolledAt = 0;
   if (subs) {
@@ -150,24 +167,30 @@ function createSyncedPlayer(o) {
       transcript.appendChild(p);
       return p;
     });
+    caption.parentNode.insertBefore(transcript, caption.nextSibling);
     transcript.addEventListener('wheel', function () { userScrolledAt = Date.now(); }, { passive: true });
     transcript.addEventListener('touchmove', function () { userScrolledAt = Date.now(); }, { passive: true });
   }
+  function drawSub(i) {                // the sentence into the caption bar
+    var s = subs[i];
+    caption.innerHTML = '';
+    s.words.forEach(function (w) {
+      var span = document.createElement('span');
+      span.className = 'w';
+      span.textContent = w[1];
+      caption.appendChild(span);
+      caption.appendChild(document.createTextNode(' '));
+    });
+    wordIdx = -1;
+  }
   function showSub(t) {
-    if (!subs) return;
+    if (!subs || askOpen) return;
     var i = lastAt(subs, t), s = subs[i];
     if (i !== subIdx) {
       if (subIdx >= 0) subEls[subIdx].classList.remove('is-now');
-      subIdx = i; wordIdx = -1;
+      subIdx = i;
       subEls[i].classList.add('is-now');
-      caption.innerHTML = '';
-      s.words.forEach(function (w) {
-        var span = document.createElement('span');
-        span.className = 'w';
-        span.textContent = w[1];
-        caption.appendChild(span);
-        caption.appendChild(document.createTextNode(' '));
-      });
+      drawSub(i);
       if (transcript.offsetParent && Date.now() - userScrolledAt > 4000) {
         var el = subEls[i], top = el.offsetTop - transcript.offsetTop;
         if (top < transcript.scrollTop || top + el.offsetHeight > transcript.scrollTop + transcript.clientHeight)
@@ -186,25 +209,24 @@ function createSyncedPlayer(o) {
     }
   }
 
-  // ---- asks: the audio stops on the question; the listener thinks; Play resumes -----
-  var askCard = null, askOpen = null, asked = {}, lastT = 0;
-  if (asks) {
-    askCard = document.createElement('div');
-    askCard.className = 'ask';
-    askCard.hidden = true;
-    (o.slide || o.mount).appendChild(askCard);   // on the slide, or beside the transport
-  }
+  // ---- asks: the audio stops; the question takes the caption bar; Play brings the answer -----
+  var askOpen = null, asked = {}, lastT = 0;
   function openAsk(q) {
     askOpen = q;
     audio.pause();
-    askCard.textContent = q.prompt || '';
-    askCard.hidden = false;
+    caption.classList.add('is-ask');
+    caption.innerHTML = '';
+    var qt = document.createElement('span'); qt.className = 'ask-text'; qt.textContent = q.prompt || '';
+    var hint = document.createElement('span'); hint.className = 'ask-hint'; hint.textContent = 'think — then Play for the answer';
+    caption.appendChild(qt); caption.appendChild(hint);
   }
   function closeAsk() {
     if (!askOpen) return;
     asked[askOpen.id] = true;
     askOpen = null;
-    askCard.hidden = true;
+    caption.classList.remove('is-ask');
+    if (subIdx >= 0) drawSub(subIdx);
+    showSub(audio.currentTime);
   }
   function checkAsks(t) {              // called only while playing: crossing q.t forward opens it
     if (!asks || askOpen) { lastT = t; return; }
@@ -216,20 +238,27 @@ function createSyncedPlayer(o) {
   }
 
   // ---- rendering --------------------------------------------------------
-  function show(i, b) {
+  function show(i, b, mark) {
     i = Math.max(0, Math.min(last, i));
-    if (i !== idx) {
-      idx = i;
-      o.render(frames[i]);
-      frameNo.textContent = (i + 1) + ' / ' + frames.length;
-      if (!single) counter.textContent = nameOf(i);
-      if (litTick) litTick.classList.remove('is-now');
-      litTick = ticks[i]; litTick.classList.add('is-now');
-      if (!audio) { prev.disabled = i === 0; next.disabled = i === last; }
+    mark = mark || null;
+    if (i !== idx || mark !== curMark) {
+      var changed = i !== idx;
+      idx = i; curMark = mark;
+      o.render(frames[i], mark);
+      if (changed) {
+        frameNo.textContent = (i + 1) + ' / ' + frames.length;
+        if (!single) counter.textContent = nameOf(i);
+        if (litTick) litTick.classList.remove('is-now');
+        litTick = ticks[i]; litTick.classList.add('is-now');
+        if (!audio) { prev.disabled = i === 0; next.disabled = i === last; }
+      }
     }
     if (o.onBeat && b !== undefined && b !== beatIdx) { beatIdx = b; o.onBeat(beats[b]); }
   }
-  function sync(t) { if (timeline) { var r = rowAt(t); show(r.frame, r.beat); } showSub(t); showClock(t); }
+  function sync(t) {
+    if (timeline) { var r = rowAt(t); show(r.frame, r.beat, markAt(t, beats[r.beat].t)); }
+    showSub(t); showClock(t);
+  }
   function seek(t) { closeAsk(); audio.currentTime = t; lastT = t; sync(t); }
   function goto(i) { timeline ? seek(timeOfFrame(i)) : show(i); }
   function step(dir) { goto(Math.max(0, Math.min(last, idx + dir))); }
@@ -245,53 +274,55 @@ function createSyncedPlayer(o) {
     audio.addEventListener('pause', function () { play.textContent = askOpen ? '▶ Answer' : '▶ Resume'; cancelAnimationFrame(rafId); rafId = null; });
     audio.addEventListener('ended', function () { play.textContent = '▶ Play'; });
   }
-  // keys act only while this part's panel is visible and focus is not in a field
-  if (o.keys !== false) {
-    document.addEventListener('keydown', function (ev) {
-      if (o.mount.offsetParent === null) return;
-      var tag = (ev.target.tagName || '').toLowerCase();
-      if (tag === 'input' || tag === 'textarea' || tag === 'select' || ev.metaKey || ev.ctrlKey || ev.altKey) return;
-      if (ev.key === ' ') { ev.preventDefault(); toggle(); }
-      else if (ev.key === 'ArrowLeft') { ev.preventDefault(); ev.shiftKey && audio ? skip(-10) : step(-1); }
-      else if (ev.key === 'ArrowRight') { ev.preventDefault(); ev.shiftKey && audio ? skip(10) : step(1); }
-    });
-  }
+  // keys act only while this part's panel is visible
+  document.addEventListener('keydown', function (ev) {
+    if (o.mount.offsetParent === null || !keyIsFree(ev)) return;
+    if (ev.key === ' ') { ev.preventDefault(); toggle(); }
+    else if (ev.key === 'ArrowLeft') { ev.preventDefault(); ev.shiftKey && audio ? skip(-10) : step(-1); }
+    else if (ev.key === 'ArrowRight') { ev.preventDefault(); ev.shiftKey && audio ? skip(10) : step(1); }
+  });
   timeline ? sync(0) : show(0);
 
   return {
     stop: function () { if (audio) audio.pause(); cancelAnimationFrame(rafId); rafId = null; },
-    goto: goto,       // frame index (a time on the timeline, a step without audio)
-    seek: seek,
-    step: step,       // ±1 frame
-    toggle: toggle,   // play/pause (or next frame without audio)
-    element: ribbon,
-    transcript: transcript   // the page (createLecture) places it behind the Transcript tab
+    goto: goto        // frame index (a time on the timeline, a step without audio)
   };
 }
 
-/* The page: one player per part, the tabs (parts + Transcript), the
- * #part:frame hash, fullscreen, and the audio/cues wiring. Pages supply
- * frames and render only.
+/* a key press is ours unless focus is in a field or a modifier is held */
+function keyIsFree(ev) {
+  var tag = (ev.target.tagName || '').toLowerCase();
+  return !(tag === 'input' || tag === 'textarea' || tag === 'select' || ev.metaKey || ev.ctrlKey || ev.altKey);
+}
+
+/* The page: one player per part, the tabs, the #part:frame hash, fullscreen,
+ * and the audio/cues wiring. Pages supply frames and render only.
  *   createLecture({ parts: [{ key, frames, render, name?, tab?, onBeat? }, …],
  *                   tabs?: element (default .tabs; null for none) })
- *   -> { players: {key: player}, activate(key, frame?) } */
+ *   -> { players: {key: player}, activate(key, frame?), fullscreen(on) } */
 function createLecture(o) {
   var cues = (typeof window.LECTURE_CUES === 'object' && window.LECTURE_CUES) || {};
   var tabs = o.tabs === undefined ? document.querySelector('.tabs') : o.tabs;
-  var players = {}, entries = [], active = null, reading = false;
+  var players = {}, entries = [], active = null;
 
   o.parts.forEach(function (m) {
     var section = document.querySelector('[data-part=' + JSON.stringify(m.key) + ']');
     if (!section) { console.warn('no panel for part ' + m.key); return; }
     var mount = section.querySelector('.transport');
     if (!mount) { mount = document.createElement('div'); mount.className = 'transport'; section.appendChild(mount); }
-    var c = cues[m.key], audio = null;
+    var c = cues[m.key], audio = null, slide = section.querySelector('.slide');
     if (c && c.beats && c.beats.length) { audio = new Audio(c.audio || 'audio/' + m.key + '.mp3'); audio.preload = 'metadata'; }
     players[m.key] = createSyncedPlayer({
-      frames: m.frames, render: m.render, onBeat: m.onBeat, mount: mount, audio: audio,
-      slide: section.querySelector('.slide'),
-      beats: c && c.beats, subs: c && c.subs, questions: c && c.questions
+      frames: m.frames, render: m.render, onBeat: m.onBeat, mount: mount, audio: audio, slide: slide,
+      beats: c && c.beats, marks: c && c.marks, subs: c && c.subs, questions: c && c.questions
     });
+    if (slide) {
+      var fs = document.createElement('button');
+      fs.type = 'button'; fs.className = 'fs-btn'; fs.title = 'Fullscreen (F)'; fs.textContent = '⛶';
+      fs.setAttribute('aria-label', 'Fullscreen');
+      fs.onclick = toggleFullscreen;
+      slide.appendChild(fs);
+    }
     var tab = null;
     if (tabs) {
       tab = document.createElement('button');
@@ -302,30 +333,6 @@ function createLecture(o) {
     }
     entries.push({ key: m.key, section: section, tab: tab });
   });
-
-  // the Transcript tab: the active part's sentences, click to jump; audio keeps playing
-  var panel = document.createElement('section');
-  panel.className = 'transcript-panel';
-  panel.hidden = true;
-  var readTab = null;
-  if (tabs && entries.some(function (e) { return players[e.key].transcript; })) {
-    readTab = document.createElement('button');
-    readTab.type = 'button'; readTab.className = 'tab-transcript'; readTab.setAttribute('role', 'tab'); readTab.textContent = 'Transcript';
-    readTab.onclick = function () { showReading(!reading); };
-    tabs.appendChild(readTab);
-    tabs.parentNode.insertBefore(panel, tabs.nextSibling);
-  }
-  function showReading(on) {
-    reading = on;
-    entries.forEach(function (e) { e.section.classList.toggle('is-active', !on && e.key === active); });
-    panel.hidden = !on;
-    if (readTab) readTab.setAttribute('aria-selected', on ? 'true' : 'false');
-    if (on) {
-      panel.innerHTML = '';
-      var tr = players[active] && players[active].transcript;
-      if (tr) panel.appendChild(tr);
-    }
-  }
 
   function activate(key, frame) {
     if (active !== key) {
@@ -338,7 +345,6 @@ function createLecture(o) {
       active = key;
       try { history.replaceState(null, '', '#' + key); } catch (e) {}
     }
-    if (reading) showReading(false);
     if (frame != null && !isNaN(frame)) players[key].goto(+frame);
   }
   function fromHash() {
@@ -346,19 +352,28 @@ function createLecture(o) {
     var known = entries.some(function (e) { return e.key === h[0]; });
     if (entries.length) activate(known ? h[0] : entries[0].key, h[1] !== undefined && h[1] !== '' ? +h[1] : null);
   }
+  // fullscreen: only the slide and the caption; the controls appear while the mouse moves
+  var controlsTimer = null;
+  function showControls() {
+    document.body.classList.add('show-controls');
+    clearTimeout(controlsTimer);
+    controlsTimer = setTimeout(function () { document.body.classList.remove('show-controls'); }, 2500);
+  }
   function fullscreen(on) {
     document.body.classList.toggle('is-fullscreen', on);
+    if (on) showControls();
     if (on && document.documentElement.requestFullscreen && !document.fullscreenElement) document.documentElement.requestFullscreen().catch(function () {});
     if (!on && document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(function () {});
   }
+  document.addEventListener('mousemove', function () { if (document.body.classList.contains('is-fullscreen')) showControls(); });
   document.addEventListener('fullscreenchange', function () { if (!document.fullscreenElement) document.body.classList.remove('is-fullscreen'); });
   window.addEventListener('hashchange', fromHash);
+  function toggleFullscreen() { fullscreen(!document.body.classList.contains('is-fullscreen')); }
   document.addEventListener('keydown', function (ev) {
-    var tag = (ev.target.tagName || '').toLowerCase();
-    if (tag === 'input' || tag === 'textarea' || tag === 'select' || ev.metaKey || ev.ctrlKey || ev.altKey) return;
+    if (!keyIsFree(ev)) return;
     var n = +ev.key;
     if (ev.key.length === 1 && n >= 1 && n <= entries.length) activate(entries[n - 1].key);
-    else if (ev.key === 'f' || ev.key === 'F') fullscreen(!document.body.classList.contains('is-fullscreen'));
+    else if (ev.key === 'f' || ev.key === 'F') toggleFullscreen();
     else if (ev.key === 'Escape') fullscreen(false);
   });
   fromHash();

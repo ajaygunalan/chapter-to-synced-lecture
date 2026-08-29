@@ -7,6 +7,9 @@ Nothing here judges the teaching; that is the review in SKILL.md step 4.
 
 - part keys match between `## part:` headings and `data-part` panels
 - beat ids are unique; beat start frames increase strictly within a part
+- marks: a mark's frame is at or after its beat's frame and increases within
+  the beat; a beat that covers several frames and names none of them by a
+  mark is reported (the player would have to guess when to change slide)
 - every display block has a spoken form; prose never contains `$` or a
   maths glyph — those are what the glossary exists to replace
 - an `<!-- ask -->` follows a prose paragraph (the question the audio stops on)
@@ -25,8 +28,8 @@ import sys
 from collections import Counter
 from pathlib import Path
 
-from lecture_format import (COMMENT_RE, MATH_GLYPHS, audio_path, cue_path, duration_of, parse_outline,
-                            parse_parts, walk)
+from lecture_format import (COMMENT_RE, MATH_GLYPHS, audio_path, cue_path, duration_of, marks_in,
+                            parse_outline, parse_parts, walk)
 
 GLYPH_RE = re.compile("[$" + MATH_GLYPHS + "]")
 PANEL_RE = re.compile(r'<\w+[^>]*\sdata-part="([^"]+)"')   # the attribute on a tag, not a JS selector string
@@ -56,8 +59,10 @@ def main():
 
     seen = set()
     for k, body in parts.items():
-        ids, last_frame, n_q, prev = [], -1, 0, None
-        for beat, items in walk(body):
+        ids, last_frame, n_q, n_m, prev = [], -1, 0, 0, None
+        walked = walk(body)
+        beat_starts = [b["frame"] for b, _ in walked if b and b["frame"] is not None]
+        for beat, items in walked:
             if beat:
                 if beat["id"] in seen:
                     problems.append(f"duplicate beat id '{beat['id']}'")
@@ -68,6 +73,8 @@ def main():
                         problems.append(f"{k}/{beat['id']}: frame {beat['frame']} does not increase "
                                         f"(previous start {last_frame})")
                     last_frame = beat["frame"]
+            mark_frame = last_frame
+            frame_marks = 0
             for item in items:
                 if item[0] == "ask":
                     if prev != "prose":
@@ -77,20 +84,39 @@ def main():
                     if item[2] is None:
                         problems.append(f"{k}: display block without spoken form: {item[1].strip()[:50]!r}")
                 else:
+                    for m in marks_in(item[1]):
+                        n_m += 1
+                        if m["frame"] is not None:
+                            frame_marks += 1
+                            if m["frame"] < mark_frame:
+                                problems.append(f"{k}/{beat['id'] if beat else '?'}: mark '{m['id']}' frame "
+                                                f"{m['frame']} is before the current frame {mark_frame}")
+                            mark_frame = max(mark_frame, m["frame"])
                     bad = sorted(set(GLYPH_RE.findall(COMMENT_RE.sub("", item[1]))))
                     if bad:
                         problems.append(f"{k}: {' '.join(bad)} in prose — say it in words (glossary) or move it "
                                         f"to a display block: {item[1].strip()[:50]!r}")
                 prev = item[0]
+            # a beat covering several frames with no frame-mark: the player would spread them by guessing
+            if beat and beat["frame"] is not None:
+                nxt = next((f for f in beat_starts if f > beat["frame"]), None)   # starts increase, checked above
+                if not frame_marks and nxt is not None and nxt - beat["frame"] > 1:
+                    notes.append(f"{k}/{beat['id']}: covers frames {beat['frame']}–{nxt - 1} with no "
+                                 f"'| frame' mark; slide changes will be spread evenly (a guess)")
+                elif frame_marks and nxt is not None and mark_frame >= nxt:
+                    problems.append(f"{k}/{beat['id']}: a mark names frame {mark_frame}, but the next beat "
+                                    f"starts at {nxt}")
         if not ids:
             problems.append(f"part '{k}' has no beats")
-        notes.append(f"{k}: {len(ids)} beats, {n_q} ask(s)")
+        notes.append(f"{k}: {len(ids)} beats, {n_m} mark(s), {n_q} ask(s)")
 
         cf = cue_path(out, k)
         if cf.exists():
             cues = json.loads(cf.read_text())
             if [b["id"] for b in cues["beats"]] != ids:
                 problems.append(f"{k}: cue beat ids differ from the script — rebuild audio")
+            if len(cues.get("marks", [])) != n_m:
+                problems.append(f"{k}: cues hold {len(cues.get('marks', []))} marks, the script {n_m} — rebuild audio")
             af = audio_path(out, k)
             dur = duration_of(af) if af.exists() else None
             if dur is not None and abs(dur - cues["beats"][-1]["end"]) > 2.0:

@@ -2,6 +2,9 @@
 
 Read a section, decide what *kind* of thing it is doing, and the slide
 treatment follows. Never start from a list of slide types you want to build.
+And never let the book's medium decide: a section of prose may want code, a
+section of code may want a diagram, a proof may want a toy example. Whatever
+carries the idea (`teaching.md`, the one rule).
 
 ## Classifying a section
 
@@ -20,7 +23,7 @@ treatment follows. Never start from a list of slide types you want to build.
 | constructs something geometrically | **geometric construction** | canvas driven by the actual maths, not hand-placed coordinates |
 | improves a piece of code | **transformation** | before/after (or N versions) with highlighted diff |
 | shows maths implemented as code | **equation → code** | equation and listing side by side, corresponding parts marked together |
-| introduces vocabulary or a formal object | **definition** | static labelled figure, or an annotated formula when the definition is an equation |
+| introduces vocabulary or a formal object | **definition** | the problem it answers first, then a static labelled figure, or an annotated formula when the definition is an equation |
 | tells a story about a real problem being solved | **case study** | annotated scene; usually voice-only |
 | poses a problem for the reader | **exercise** | an ask: the audio stops on the question, the answer follows |
 | drills notation or mechanics (many short items) | **drill set** | skip, or one representative drill as a question |
@@ -50,17 +53,29 @@ pattern-matching to the subject. The mix on three test chapters:
   geometric constructions (double reflection, screw decomposition); ten
   drills, ten structural exercises, four programming examples.
 
-## Code on slides
+## What a frame is, and what a mark does to it
 
 A frame is one canvas (`.slide`): whatever that moment needs — a diagram,
 a listing, both, a table — composed on it and sized to be read from across
-a room, with a one-line note under it. No permanent sidebar. Code is a
-drawing like any other: when the voice is on the code, the code fills the
-slide and the diagram shrinks or leaves — never a 0.7 rem listing in a
-sidebar with the important line cut off behind a scrollbar. A listing that
-does not fit at readable size is split across frames, never shrunk. The
-player draws the slide number and the ask onto the `.slide`; the page
-draws everything else.
+a room. No permanent sidebar. No caption of the page's own under the slide:
+the words being spoken are already there, and a second line of text fights
+them. Code is a drawing like any other: when the voice is on the code, the
+code fills the slide and the diagram shrinks or leaves — never a 0.7 rem
+listing in a sidebar with the important line cut off behind a scrollbar. A
+listing that does not fit at readable size is split across frames, never
+shrunk. The player draws the slide number and the fullscreen button onto the
+`.slide`; the page draws everything else.
+
+`render(frame, mark)` is called with the frame and, within it, the id of the
+thing the voice is naming right now (`sync-architecture.md`, "Marks"), or
+`null`. The page decides what lit means for each kind of thing it draws —
+an edge in the accent colour, a table cell flashed, a code line brought into
+focus while the rest dims, a bullet revealed, a term boxed — and keeps the
+vocabulary of ids small and stable across the part: `edge-AB`, `line-27`,
+`cell-1-4`, `bullet-3`, `next` (advance the reveal by one). The frames give
+the state; the marks give the eye its place in it.
+
+## Code on slides
 
 Before/after is one frame that changes, the way the diagrams already do:
 the same listing, the changed lines lit (`.line.hl`), the wrong ones
@@ -76,6 +91,10 @@ pre.innerHTML = lines.map(function (l, i) {
   return '<span class="line' + (mark[i] ? ' ' + mark[i] : '') + '">' + highlightCode(l, 'cpp') + '</span>';
 }).join('');            // .line is display:block — no newline between them
 ```
+
+A mark on a line (`line-27`) lights that line the moment it is spoken —
+`.line.lit`, styled by the player — so a listing can sit on screen whole
+while the voice walks it.
 
 The book's own code stays exactly as the book prints it. Staged code — the
 examples the lecture writes — is C++ in the house style:
@@ -113,5 +132,5 @@ When several sibling subsections annotate the same diagram or formula, build
 **one** part spanning them and map each section to it in the outline.
 
 A part gets as many beats as it has distinct ideas — not as many as it has
-frames. It is as long as those ideas take.
-
+frames — and as many stops as the listener has things to predict. It is as
+long as those take.

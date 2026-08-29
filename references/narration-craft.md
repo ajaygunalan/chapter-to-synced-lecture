@@ -7,12 +7,11 @@ teaching decisions are in `teaching.md`; this is the writing.
 
 Write both into `script.md`'s header.
 
-**Author profile** — from reading the chapter: stance (practitioner telling
-stories; co-constructor "let's build it"; authority), how he motivates (a
-war story, a bug, history, "here's why you'd care"), how often he steps
-aside and in what register, his humour, signature phrases to reuse
-sparingly, how he closes a section. Reproduce the pattern, not the
-sentences.
+**Author profile** — from reading the chapter: how he positions himself
+(practitioner telling stories; co-builder, "let's build it"; authority), how
+he motivates (a war story, a bug, history, "here's why you'd care"), how often
+he steps aside and in what tone, his humour, signature phrases to reuse
+sparingly, how he closes a section. Reproduce the pattern, not the sentences.
 
 **Glossary** — a row per symbol, operator, identifier, acronym, and
 typographic distinction, with its single spoken form; decided once.
@@ -36,6 +35,13 @@ an English word gets expanded. Identifiers are screen-only; the voice says
 Diagram legend once, then plain verbs. Every proper noun gets a `pronounce:`
 entry in the header block.
 
+## The opening of a part
+
+Before the idea is explained, the listener must want it — `teaching.md`,
+principle 2, says how a part opens. The test on the page: if the first
+paragraph is about the previous chapter, or a struct, or a definition with
+no reason behind it, the opening has been skipped.
+
 ## Writing for the ear
 
 - One idea per sentence; front-load the point; contractions; "you" and "we".
@@ -45,11 +51,14 @@ entry in the header block.
 - Say the key idea until it lands — formally, as a picture, as a rule of
   thumb — in whatever forms the moment wants. Some listeners are fogged out
   at any given moment.
-- Keep something happening; a chapter is "therefore / but", never "and
-  then".
+- Keep something happening: each paragraph follows the last by consequence
+  or contrast ("so", "but"), never by mere sequence ("and then").
 - Emphasis with words and CAPITALS, not markup. Pauses with full stops,
   paragraph breaks, "…", and a `pause` where the listener needs a moment to
   think (Script format).
+- Whatever the voice names, mark it (Script format, `mark`) — an edge, a
+  line, a cell, a bullet — so it lights as it is said (`sync-architecture.md`,
+  "Marks", says what not to mark).
 - Read every draft aloud. What you stumble on, the engine stumbles on.
 
 Narration contains no maths and no code; anything symbolic goes through the
@@ -85,12 +94,13 @@ $$W[i,j]^k = \min\left(W[i,j]^{k-1},\; W[i,k]^{k-1} + W[k,j]^{k-1}\right)$$
      either what you already had, or the trip through k — whichever is shorter -->
 ```
 
-## Fidelity
+## Honesty
 
 Principle 5 (`teaching.md`) applies to every sentence. Watch for: merged
 caveats, the wrong proof on the wrong result, number drift, "always/every",
-borrowed credit, speculative closers. Where the book is wrong (a mislabelled
-diagram), show it corrected on screen and list it under
+opinions the author never voiced, borrowed credit, speculative closers.
+Where the book is wrong (a mislabelled diagram, a reversed inequality), say
+the right thing, show it corrected on screen with the page, and list it under
 `<!-- corrections -->`.
 
 ## Script format
@@ -121,11 +131,14 @@ Say we have to wire seven towns… <!-- pause 2s --> …and that guess is three
 too heavy.
 
 <!-- beat: prim-scan | frame 1 -->
-Three edges leave what we own. Which one do I take?
+Three edges leave what we own: <!-- mark: edge-AB -->A to B for five,
+<!-- mark: edge-AF -->A to F for seven, <!-- mark: edge-AG -->A to G for
+twelve. Which one do I take?
 <!-- ask -->
 
-If you said the cheapest edge anywhere — A–D, seven — that's the trap: it
-doesn't touch the tree. B–C. Here's why that's safe…
+If you said the cheapest edge anywhere — C–E, two — that's the trap: it
+doesn't touch the tree. <!-- mark: edge-AB | frame 2 -->A to B. Here's why
+that's safe…
 
 ## part: nets
 <!-- beat: nets-1 -->
@@ -136,11 +149,14 @@ doesn't touch the tree. B–C. Here's why that's safe…
   and matches `data-part="<key>"` in the page.
 - `<!-- beat: id | frame N -->` starts a beat at frame N; `<!-- beat: id -->`
   holds (semantics: `sync-architecture.md`, "Beats start at a frame").
+- `<!-- mark: id -->` right before the words it belongs to lights `id` at
+  the first of those words; `<!-- mark: id | frame N -->` also changes the
+  slide there. Ids are whatever the page's `render(frame, mark)` understands;
+  frames named by marks increase within a beat.
 - `<!-- ask -->` right after the question's paragraph: the audio stops
-  there, the question stays on the slide, and Play brings the next
+  there, the question takes the caption bar, and Play brings the next
   paragraph — the answer, which may open with the trap ("if you said…").
-- `<!-- pause 2s -->` inside prose becomes silence (the engine's limit is
-  3 s).
+- `<!-- pause 2s -->` inside prose becomes silence (clamped to 3 s).
 - `outline` maps every heading of `extract/outline.txt`, including the
   chapter-title line, to a part or `skip: <reason>`; invent ids for
   unnumbered sections (`19.2`, `6.notes`) and use the same ids in both.

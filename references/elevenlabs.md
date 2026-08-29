@@ -1,19 +1,20 @@
 # ElevenLabs
 
-What `build_audio.py` assumes about the provider, verified against the docs
-and a live request on 2026-08-27. Endpoint reference:
+The final voice — `build_audio.py --engine elevenlabs`, run once when the words
+are final (SKILL.md step 6). What `scripts/engines/elevenlabs.py` assumes
+about the API, verified against the docs and a live request on 2026-08-27. Endpoint reference:
 https://elevenlabs.io/docs/api-reference/text-to-speech/convert-with-timestamps
 
 ## Setup
 
 1. Account at https://elevenlabs.io. Billing is per character of input
-   (`build_audio.py` prints each part's character count and the rate the
-   account is actually charged); https://elevenlabs.io/pricing has the
+   (`build_audio.py` prints each part's character count and each request's
+   cost); https://elevenlabs.io/pricing has the
    current monthly quotas (the free tier has historically not covered one
    chapter and is non-commercial).
 2. Key at https://elevenlabs.io/app/settings/api-keys with scopes **Text to
-   Speech** (required), **Voices: read** (`--list-voices`), **User: read**
-   (`--check`). A key missing a scope still synthesises; the script names
+   Speech** (required), **Voices: read** (`--check --list-voices`), **User:
+   read** (`--check`). A key missing a scope still synthesises; the script names
    the missing scope instead of failing.
 3. Store it where the script looks: `ELEVENLABS_API_KEY` in the environment,
    or — recommended, so every session finds it —
@@ -21,26 +22,26 @@ https://elevenlabs.io/docs/api-reference/text-to-speech/convert-with-timestamps
    mkdir -p ~/.config/elevenlabs
    printf '%s' 'KEY' > ~/.config/elevenlabs/api_key && chmod 600 ~/.config/elevenlabs/api_key
    ```
-4. `build_audio.py --check` prints tier, balance, and each model's live
-   per-request limit; `--probe` sends one 25-character request and proves
-   the Text to Speech scope works. `--list-voices` prints the account's
-   voices.
+4. `build_audio.py --check --engine elevenlabs` prints tier, balance, and
+   each model's live per-request limit; add `--probe` to send one
+   25-character request that proves the Text to Speech scope works, and
+   `--list-voices` for the account's voices.
 
 Every request authenticates with one header, `xi-api-key`.
 
 ## Voices
 
-The lecture voices are the `VOICES` table in `scripts/build_audio.py` (name
-→ id, with `DEFAULT_VOICE`). `--voice` takes a name from the table or a raw
-ElevenLabs id; `ELEVENLABS_VOICE_ID` overrides the default. `--list-voices`
-prints the account's voices.
+The lecture voices are the `VOICES` table in `scripts/engines/elevenlabs.py`
+(name → id, with `DEFAULT`). `--voice` takes a name from the table or a raw
+ElevenLabs id; `ELEVENLABS_VOICE_ID` overrides the default.
+`--check --list-voices` prints the account's voices.
 
 To add a voice: audition in the web app, where listening is free —
 https://elevenlabs.io/app/voice-library (filter Narrative & Story /
 Educational, English) — **Add to My Voices**, then **⋯ → Copy voice ID**
 and add a row to `VOICES`. Audition cheaply before committing a chapter:
-`--probe --voice <name|id>` says one sentence (≈15 credits), or build one
-short part with `--part <key>`. Changing voice means regenerating every
+`--check --probe --voice <name|id>` says one sentence (≈15 credits), or
+build one short part with `--part <key>`. Changing voice means regenerating every
 part you want in that voice (`--force`), which re-bills them.
 
 ## What the script sends and reads
@@ -63,20 +64,20 @@ long-form narration and verified to return alignment. `eleven_flash_v2_5`
 is cheaper per character with a larger request limit and lower quality.
 `eleven_v3` is the most expressive but its alignment support is unverified —
 test one part before committing. Per-request limits are in
-`MODEL_LIMITS` in the script (fallback) and live from `--check`. The rate
+`MODEL_LIMITS` in `scripts/engines/elevenlabs.py` (fallback) and live from
+`--check`. The rate
 per character is whatever the plan charges; the script prints it from the
 first response.
 
 Voice settings (`--stability --similarity --style --speed`; defaults in
-`--help`): stability 0.4–0.55 is the useful band for a teaching voice —
+`--engine elevenlabs --help`): stability 0.4–0.55 is the useful band for a teaching voice —
 higher is flatter and more repeatable, lower more expressive; `--style`
 (0–0.4) adds emphasis on v2; `--speed` 0.9–1.1.
 
 ## Pronunciation
 
-`pronounce:` lines in the script are substituted locally before synthesis
-(see narration-craft.md, "Script format") — works with every model, no extra
-API call. Pronunciation dictionaries
+`pronounce:` lines in the script are substituted before synthesis
+(narration-craft.md, "Script format"), for every engine. Pronunciation dictionaries
 (https://elevenlabs.io/docs/eleven-api/guides/how-to/text-to-speech/pronunciation-dictionaries)
 are only worth it for a voice reused across many chapters; phoneme rules need
 `eleven_flash_v2` or `eleven_v3`.
@@ -88,7 +89,7 @@ built in parallel drain one pool (`--check` shows the balance if the key has
 User: read). When a build hits `quota_exceeded` the script stops with a
 summary of which parts exist; top up at
 https://elevenlabs.io/app/subscription and rerun the identical command
-(SKILL.md step 5).
+(SKILL.md step 6).
 
 ## Errors
 
