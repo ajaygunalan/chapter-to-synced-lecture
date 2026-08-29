@@ -55,7 +55,7 @@ principles. Read it before anything else.
  ┌─────────────────────────────────────────────────────────────────────────┐
  │ 5  DRY RUN         build_audio.py ─▶ Kokoro (local, free)               │
  │    audio/<part>.mp3 · cues/<part>.json (beats, marks, asks, subtitles) │
- │    lint.py (now also vs audio lengths) ─▶ xdg-open                      │
+ │    lint.py (now also vs audio lengths) ─▶ open.py: how long it took     │
  │    THE RUN ENDS HERE. The user listens and gives notes; steps 3–5       │
  │    repeat until the words are final.                                    │
  └───────────────────────────────────┬─────────────────────────────────────┘
@@ -201,12 +201,14 @@ on a geometry chapter.
 ```bash
 python3 scripts/build_audio.py script.md --out <outdir>              # Kokoro, local, free
 python3 scripts/lint.py script.md lecture.html --out <outdir> --headings extract/outline.txt
-xdg-open lecture.html
+python3 scripts/open.py lecture.html
 ```
 
 One file per part; beats, marks, asks, subtitles and `cues/cues.js`
 written alongside. The linter now also matches cue ends against audio
-lengths. That is the end of the run: the user listens and says what
+lengths. `open.py` prints how long the run took — every script stamps
+`<outdir>/run.log`, from `extract.py`'s "started" to "opened" — and opens
+the page. That is the end of the run: the user listens and says what
 happens next; nothing is re-run or re-recorded without that. Kokoro
 setup and voices: `references/kokoro.md`. Engines share one contract
 (`scripts/engines/__init__.py`), so `--engine` is the only difference
@@ -236,6 +238,7 @@ speech: after editing them, `build_audio.py script.md --out <outdir>
 ├── audio/                one mp3 per part, and the .txt the engine was given
 ├── cues/                 per-part cues + alignment + subtitles; cues.js
 ├── shots/                screenshots from step 3
+├── run.log               timestamps: started … opened; open.py reports the run's length
 └── extract/
 ```
 

@@ -31,7 +31,7 @@ from pathlib import Path
 
 import engines
 from lecture_format import (NON_PAUSE_COMMENT_RE, PAUSE_RE, SEP, align_path, audio_path, cue_path, marks_in,
-                            para_offsets, parse_parts, parse_pronounce, text_path, walk)
+                            para_offsets, parse_parts, parse_pronounce, stamp, text_path, walk)
 from subtitles import build_subs, time_at, words_with_offsets
 
 print = functools.partial(print, flush=True)   # progress must reach a redirected log as it happens
@@ -257,6 +257,7 @@ def main():
           + (f"; spent {spent:,} credits this run" if spent else ""))
     if not args.recue:
         print(f"total: {total_chars:,} chars, ~{total_chars / CHARS_PER_MIN:.0f} min of audio")
+    stamp(args.out, f"audio {args.engine}" + (" recue" if args.recue else ""))
     sys.exit(0 if ok else 1)
 
 

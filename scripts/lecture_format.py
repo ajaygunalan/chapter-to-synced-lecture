@@ -8,6 +8,7 @@ format"; the vocabulary (part, frame, beat, mark, ask) is SKILL.md's.
 import re
 import shutil
 import subprocess
+from datetime import datetime
 
 SEP = "\n\n"                                   # paragraph separator in the text sent to the engine
 MATH_GLYPHS = "∞⌋⌊∧∨∑∏∫√∂∇≠≤≥≈→↦⊗⊕½¼¾²³⁻∈∀∃"   # what "maths in prose" looks like
@@ -44,6 +45,38 @@ def align_path(out, part):
 def text_path(out, part):
     """Exactly what the engine was given; --recue refuses a part whose words changed."""
     return out / "audio" / f"{part}.txt"
+
+
+def stamp(out, what):
+    """Append '<time> <what>' to <out>/run.log. extract.py writes "started"; every
+    script writes its finish; open.py writes "opened" and reports the run's length."""
+    out.mkdir(parents=True, exist_ok=True)
+    with (out / "run.log").open("a") as f:
+        f.write(f"{datetime.now().replace(microsecond=0).isoformat()} {what}\n")
+
+
+STRETCH = {"extracted": "read", "page": "slides", "lint": "script", "audio": "audio", "opened": "open"}
+
+
+def run_summary(out):
+    """'run: 47 min — read 3 · slides 14 · script 18 · audio 9 · open 0' from run.log,
+    each stretch named by the stamp that ends it, since the last "started"."""
+    log = out / "run.log"
+    if not log.exists():
+        return "run: no run.log"
+    lines = [l.split(" ", 1) for l in log.read_text().splitlines() if " " in l]
+    starts = [i for i, (_, what) in enumerate(lines) if what == "started"]
+    if not starts:
+        return "run: no 'started' stamp in run.log"
+    run = [(datetime.fromisoformat(t), what) for t, what in lines[starts[-1]:]]
+    total = (run[-1][0] - run[0][0]).total_seconds() / 60
+    stretches, order = {}, []
+    for (t0, _), (t1, what) in zip(run, run[1:]):
+        name = STRETCH.get(what.split()[0], what)
+        if name not in stretches:
+            order.append(name)
+        stretches[name] = stretches.get(name, 0) + (t1 - t0).total_seconds() / 60
+    return f"run: {total:.0f} min — " + " · ".join(f"{n} {stretches[n]:.0f}" for n in order)
 
 
 def para_offsets(paragraphs):

@@ -20,6 +20,8 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
+from lecture_format import stamp
+
 LOSSY_RE = re.compile("[\ue000-\uf8ff\u2400-\u243f\u4e00-\u9fff\ufffd]")   # private-use, control pictures, CJK, U+FFFD in a Latin book
 MATH_HINT_RE = re.compile(r"[=≠≈≤≥∑∏∫∞∂∇√∧∨⌋⌊⌈⌉⊂⊆∈∀∃→↦⊗⊕αβγδεθλμπρσφψω]|\b[a-zA-Z]\^")
 NUMBERED_EQ_RE = re.compile(r"\((\d+\.\d+[a-z]?)\)\s*$", re.M)
@@ -147,6 +149,8 @@ def main():
     if not pdf.exists():
         sys.exit(f"no such file: {pdf}")
     out.mkdir(parents=True, exist_ok=True)
+    if not args.pages:
+        stamp(out.parent, "started")           # the run's clock: <outdir>/run.log
 
     doc = None
     if not (have("pdftotext") and have("pdfimages") and have("pdftoppm")):
@@ -202,6 +206,7 @@ def main():
                 "| file | page | size |", "|---|---|---|"]
         inv += [f"| images/{f.name} | {p} | {w}×{h} |" for f, p, w, h in images]
     (out / "inventory.md").write_text("\n".join(inv) + "\n")
+    stamp(out.parent, "extracted")
 
     print(f"{pdf.name}: {len(pages)} pages, {len(images)} images, {len(to_render)} renders, "
           f"{n_eq} numbered eqs, {len(heads)} heading candidates"

@@ -28,7 +28,7 @@ import sys
 from collections import Counter
 from pathlib import Path
 
-from lecture_format import (COMMENT_RE, MATH_GLYPHS, audio_path, cue_path, duration_of, marks_in,
+from lecture_format import (COMMENT_RE, MATH_GLYPHS, audio_path, cue_path, duration_of, marks_in, stamp,
                             parse_outline, parse_parts, walk)
 
 GLYPH_RE = re.compile("[$" + MATH_GLYPHS + "]")
@@ -141,6 +141,7 @@ def main():
     for p in problems:
         print(f"  ! {p}", file=sys.stderr)
     print(f"{len(parts)} parts, {len(seen)} beats, {len(problems)} problem(s)")
+    stamp(out, f"lint {len(problems)} problem(s)")
     sys.exit(1 if problems else 0)
 
 

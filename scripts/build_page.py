@@ -21,6 +21,7 @@ import sys
 from pathlib import Path
 
 from render_math import render_html
+from lecture_format import stamp
 
 HERE = Path(__file__).resolve().parent
 ASSETS = HERE.parent / "assets"
@@ -50,6 +51,7 @@ def main():
     page, n_img = IMG_RE.subn(embed, page)
     page, n_math, errors = render_html(page, args.out.with_suffix(args.out.suffix + ".math-cache.json"))
     args.out.write_text(page)
+    stamp(args.out.parent, "page")
     print(f"{args.out}: assets inlined, {n_img} image(s) embedded, {n_math} maths expression(s), {len(page):,} bytes")
     for tex, err in errors:
         print(f"  ! {tex[:60]!r}: {err[:120]}", file=sys.stderr)
