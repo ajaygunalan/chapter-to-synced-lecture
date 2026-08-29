@@ -7,9 +7,7 @@ https://elevenlabs.io/docs/api-reference/text-to-speech/convert-with-timestamps
 
 ## Setup
 
-1. Account at https://elevenlabs.io. Billing is per character of input;
-   https://elevenlabs.io/pricing has the monthly quotas (the free tier does
-   not cover a chapter and is non-commercial).
+1. Account at https://elevenlabs.io.
 2. Key at https://elevenlabs.io/app/settings/api-keys with scopes **Text to
    Speech** (required), **Voices: read** and **User: read** (for `--check`).
    A key missing a scope still synthesises; the script names the missing
@@ -20,7 +18,7 @@ https://elevenlabs.io/docs/api-reference/text-to-speech/convert-with-timestamps
    mkdir -p ~/.config/elevenlabs
    printf '%s' 'KEY' > ~/.config/elevenlabs/api_key && chmod 600 ~/.config/elevenlabs/api_key
    ```
-4. `build_audio.py --check --engine elevenlabs` prints tier, balance, and
+4. `build_audio.py --check --engine elevenlabs` prints tier, balance and
    each model's live per-request limit; add `--probe` to send one short
    request that proves the Text to Speech scope works, and `--list-voices`
    for the account's voices.
@@ -52,14 +50,6 @@ Voice settings (`--stability --similarity --style --speed`; defaults in
 `--engine elevenlabs --help`): stability 0.4–0.55 is the useful band for a
 teaching voice — higher is flatter and more repeatable, lower more
 expressive; `--style` (0–0.4) adds emphasis on v2; `--speed` 0.9–1.1.
-
-## Quota
-
-Quotas are monthly and shared across everything you generate — chapters
-built in parallel drain one pool. When a build hits `quota_exceeded` the
-script stops with a summary of which parts exist; top up at
-https://elevenlabs.io/app/subscription and rerun the identical command
-(resume rules: `build_audio.py --help`).
 
 ## Errors
 

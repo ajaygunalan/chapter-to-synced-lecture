@@ -203,7 +203,7 @@ def main():
             stale = text != tf.read_text()                      # the words moved on since it was recorded
             if stale and engines.load(old).FINAL:
                 warn(f"the words changed since the {old} recording, which is not replaced automatically — "
-                     f"re-record it with --part {key} when you mean to spend the credits")
+                     f"re-record it with --part {key} to replace it")
                 ok = False
                 continue
             if not stale and (old == args.engine or engines.load(old).FINAL):

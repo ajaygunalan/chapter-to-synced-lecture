@@ -190,8 +190,7 @@ python3 scripts/build_audio.py script.md --out <outdir> --engine elevenlabs [--v
 Nothing is rebuilt but the audio — same script, same cues, same page — and a
 paid recording is never overwritten by a later free one (`build_audio.py
 --help`).
-Setup, voices and quota: `references/elevenlabs.md`; with no key, stop and
-say so. If `build_audio.py --check` fails, `references/kokoro.md`.
+Setup and voices: `references/elevenlabs.md`; with no key, stop and say so. If `build_audio.py --check` fails, `references/kokoro.md`.
 
 ## Output
 
