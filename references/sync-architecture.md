@@ -136,4 +136,4 @@ slides").
 One module per voice engine in `scripts/engines/`, with the contract in
 `scripts/engines/__init__.py`; every engine writes the same
 `cues/*.align.json`. Which engine is used when is SKILL.md step 5;
-setup is `kokoro.md` and `elevenlabs.md`.
+setup is `tada.md`, `kokoro.md` and `elevenlabs.md`.

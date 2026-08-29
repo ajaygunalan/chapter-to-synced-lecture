@@ -21,8 +21,8 @@ Adding an engine is one new module here plus its name in ENGINES.
 
 from importlib import import_module
 
-ENGINES = ("kokoro", "tada", "elevenlabs")
-DEFAULT = "kokoro"
+ENGINES = ("tada", "kokoro", "elevenlabs")
+DEFAULT = "tada"
 LEGACY = "elevenlabs"        # what recorded the cues written before they carried an "engine" key
 
 

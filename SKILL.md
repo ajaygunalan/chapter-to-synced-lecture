@@ -210,9 +210,12 @@ python3 scripts/lint.py script.md lecture.html --out <outdir> --headings extract
 python3 scripts/open.py lecture.html
 ```
 
-Kokoro on the GPU: about a minute for a chapter, free, local, unlimited —
-this is how audio is made, every time. `open.py` prints the phase timings
-and opens the page. **That is the end of the run: the user listens.**
+TADA on the GPU (`references/tada.md`): free, local, unlimited, a real
+narrator's prosody and word timing from the model itself — about a quarter
+of an hour for a chapter — this is how audio is made, every time. Kokoro
+(`--engine kokoro`, `references/kokoro.md`) is the small fast fallback: a
+minute a chapter, flat. `open.py` prints the phase timings and opens the
+page. **That is the end of the run: the user listens.**
 
 What comes back from that listening is "Revising", below.
 
@@ -226,7 +229,7 @@ python3 scripts/build_audio.py script.md --out <outdir> --engine elevenlabs [--v
 Nothing is rebuilt but the audio — same script, same cues, same page — and a
 paid recording is never overwritten by a later free one (`build_audio.py
 --help`).
-Setup and voices: `references/elevenlabs.md`; with no key, stop and say so. If `build_audio.py --check` fails, `references/kokoro.md`.
+Setup and voices: `references/elevenlabs.md`; with no key, stop and say so. If `build_audio.py --check` fails, `references/tada.md`.
 
 ## Revising
 
@@ -261,12 +264,13 @@ Each part is compared against `audio/<part>.txt`, the exact words it was
 given, so an unchanged part is never re-recorded and a changed one is never
 missed. `lint.py` after every edit.
 
-**Emphasis is written, not asked for.** Kokoro is level by design
-(`kokoro.md`) and will not lean on a word because the script wants it to.
-Move the word to the front, put it in CAPITALS, end the sentence sooner, or
-leave a `<!-- pause 2s -->` in front of it.
+**Emphasis is written, not asked for.** TADA reads the sentence and
+leans where a reader would; Kokoro is level by design (`kokoro.md`).
+Neither follows a stage direction. Move the word to the front, put it in
+CAPITALS, end the sentence sooner, or leave a `<!-- pause 2s -->` in front
+of it.
 
-Kokoro records every revision. ElevenLabs only when the listener asks for it
+TADA records every revision. ElevenLabs only when the listener asks for it
 by name, and only once the words have stopped moving.
 
 ## Output

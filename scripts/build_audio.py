@@ -5,7 +5,8 @@ script.md -> <out>/audio/<part>.mp3 + <out>/cues/<part>.json + <out>/cues/cues.j
 One audio file per part, and a cue for every beat, mark and ask, timed from
 the engine's per-word alignment (engines: scripts/engines/).
 
-    build_audio.py script.md --out DIR                          # kokoro (default)
+    build_audio.py script.md --out DIR                          # tada (default)
+    build_audio.py script.md --out DIR --engine kokoro          # the small fast fallback
     build_audio.py script.md --out DIR --engine elevenlabs
     build_audio.py script.md --out DIR --recue                  # re-time cues from the existing recording; no synthesis
     build_audio.py --check [--engine E]                         # what the engine can do right now
@@ -17,7 +18,7 @@ edit; --force (or --part) rebuilds regardless. A part recorded by an engine
 marked FINAL (a paid voice) is never replaced automatically — not by
 another engine, and not by an edit; it says so and leaves it alone.
 Script format:
-references/narration-craft.md; engines: references/kokoro.md,
+references/narration-craft.md; engines: references/tada.md, references/kokoro.md,
 references/elevenlabs.md.
 """
 

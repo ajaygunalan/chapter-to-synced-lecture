@@ -9,8 +9,11 @@ but it plays like one, and you can pause, scrub, jump to any slide, or read the
 transcript.
 
 **No API key needed.** The voice runs on your own machine with
-[Kokoro](https://huggingface.co/hexgrad/Kokoro-82M): free, unlimited, about a
-minute of GPU time for an hour of narration. ElevenLabs is optional, if you want
+[TADA-1B](https://github.com/HumeAI/tada), Hume's open-weights narrator: free,
+unlimited, a real reader's rhythm and emphasis, and word timing straight from
+the model — about fifteen minutes of GPU time for an hour of narration on a
+laptop card. [Kokoro](https://huggingface.co/hexgrad/Kokoro-82M) is the small
+fast fallback (a minute an hour, flatter). ElevenLabs is optional, if you want
 a paid voice for a final take.
 
 ## What you get
@@ -54,8 +57,11 @@ economics, whatever the chapter happens to be.
 
 - Claude Code
 - `poppler-utils`, `ffmpeg`, `chromium`
-- Kokoro in a virtualenv — [`references/kokoro.md`](references/kokoro.md).
-  An NVIDIA GPU makes it fast; a CPU still beats real time.
+- TADA in a virtualenv — [`references/tada.md`](references/tada.md): an
+  NVIDIA GPU with 8 GB, and a one-time click on Meta's Llama 3.2 licence for
+  its tokenizer.
+- Optional fallback: Kokoro — [`references/kokoro.md`](references/kokoro.md);
+  a CPU still beats real time.
 - Optional: an ElevenLabs key for the paid voice
   ([`references/elevenlabs.md`](references/elevenlabs.md))
 
