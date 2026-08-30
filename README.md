@@ -12,10 +12,7 @@ transcript.
 [Chatterbox](https://github.com/resemble-ai/chatterbox), Resemble AI's open
 500M model (MIT): free, unlimited, a natural reader with an emotion knob and a
 pacing knob — about half an hour of GPU time for an hour of narration on a
-laptop card, because a forced aligner
-([torchaudio's MMS](https://docs.pytorch.org/audio/stable/tutorials/ctc_forced_alignment_api_tutorial.html),
-no extra install) times every word after it is spoken.
-[TADA-1B](https://github.com/HumeAI/tada), Hume's open-weights narrator, is
+laptop card. [TADA-1B](https://github.com/HumeAI/tada), Hume's open-weights narrator, is
 the alternative — word timing straight from the model, a quarter of an hour
 per hour of narration. [Kokoro](https://huggingface.co/hexgrad/Kokoro-82M)
 is the small fast fallback (a minute an hour, flatter). ElevenLabs is

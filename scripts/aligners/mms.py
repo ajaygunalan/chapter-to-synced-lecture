@@ -6,17 +6,10 @@ plus torchaudio.functional.forced_align. Nothing beyond the torch every
 engine virtualenv already installs; the bundle's weights (~1.2 GB) download
 from PyTorch on first use.
 
-    align(wav_path, text, device=None)          -> [[char offset, seconds]] per word of text
-    align_samples(samples, rate, text, device)  the same for audio already in memory
     python aligners/mms.py <wav> <text-file> [cuda|cpu]     prints the JSON list
 
-Words are subtitles.words_with_offsets(text) — the same split the cues use —
-each reduced to the model's vocabulary [a-z'] (lowercase; accents stripped;
-integers spelt out; everything else dropped). A word left with no letters
-carries no tokens and inherits the previous word's start. Audio of any
-length: emissions are computed in 30 s windows, each with a second of
-context on either side (attention is quadratic in the window; forced_align
-itself is linear), then aligned in one pass.
+Words are reduced to the model's vocabulary [a-z'] by normalise(): lowercase,
+accents stripped, integers spelt out, everything else dropped.
 """
 
 import json
@@ -29,7 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))     # subtitles, wh
 from subtitles import words_with_offsets                          # noqa: E402
 
 RATE = 16000                  # MMS_FA.sample_rate
-WINDOW_S = 30                 # seconds of audio per emission pass
+WINDOW_S = 30                 # seconds of audio per emission pass (attention is quadratic in it)
 PAD_S = 1                     # context heard on either side of a window, not scored
 _loaded = {}
 
@@ -59,25 +52,23 @@ def normalise(word):
 
 def _model(device):
     if device not in _loaded:
-        import torch
         import torchaudio
         bundle = torchaudio.pipelines.MMS_FA
-        model = bundle.get_model(with_star=False).to(device).eval()
-        _loaded[device] = (torch, model, bundle.get_dict(star=None))
+        _loaded[device] = (bundle.get_model(with_star=False).to(device).eval(), bundle.get_dict(star=None))
     return _loaded[device]
 
 
-def _device(device):
-    if device:
-        return device
+def align(samples, rate, text, device=None):
     import torch
-    return "cuda" if torch.cuda.is_available() else "cpu"
-
-
-def align_samples(samples, rate, text, device=None):
     import torchaudio.functional as F
-    device = _device(device)
-    torch, model, vocab = _model(device)
+    device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+    model, vocab = _model(device)
+    words = words_with_offsets(text)
+    per_word, targets = [], []
+    for _, w in words:
+        ids = [vocab[c] for c in normalise(w) if c in vocab]
+        per_word.append(len(ids))
+        targets += ids
     wave = torch.as_tensor(samples, dtype=torch.float32)
     if wave.ndim > 1:
         wave = wave.mean(dim=-1)
@@ -102,27 +93,16 @@ def align_samples(samples, rate, text, device=None):
             em = em[0, a:b]
             emissions.append(em)
             frame_t += [(lo + f * per_frame) / RATE for f in range(a, a + em.size(0))]
-    words = words_with_offsets(text)
-    if not emissions or not words:
+    if not targets or not emissions:
         return [[off, 0.0] for off, _ in words]
     emission = torch.cat(emissions).unsqueeze(0)
-
-    # tokens per word, in order
-    per_word, targets = [], []
-    for _, w in words:
-        ids = [vocab[c] for c in normalise(w) if c in vocab]
-        per_word.append(len(ids))
-        targets += ids
-    if not targets:
-        return [[off, 0.0] for off, _ in words]
     t = torch.tensor([targets], dtype=torch.int32, device=device)
     try:
         aligned, scores = F.forced_align(emission, t, blank=0)
     except RuntimeError as e:                                # more tokens than frames: audio far too short
         print(f"mms: forced_align failed ({e}); spreading {len(words)} words evenly", file=sys.stderr)
-        total = frame_t[-1]
-        return [[off, round(total * i / len(words), 3)] for i, (off, _) in enumerate(words)]
-    spans = F.merge_tokens(aligned[0], scores[0].exp())      # one span per target token, in order
+        return [[off, round(frame_t[-1] * i / len(words), 3)] for i, (off, _) in enumerate(words)]
+    spans = F.merge_tokens(aligned[0].cpu(), scores[0].cpu())   # one span per target token, in order
     out, k, last = [], 0, 0.0
     for (off, _), n in zip(words, per_word):
         if n:
@@ -132,17 +112,12 @@ def align_samples(samples, rate, text, device=None):
     return out
 
 
-def align(wav_path, text, device=None):
-    import soundfile as sf
-    data, rate = sf.read(str(wav_path), dtype="float32", always_2d=True)
-    return align_samples(data.mean(axis=1), rate, text, device)
-
-
 def main():
     if len(sys.argv) < 3:
         sys.exit(__doc__)
-    text = Path(sys.argv[2]).read_text()
-    print(json.dumps(align(sys.argv[1], text, sys.argv[3] if len(sys.argv) > 3 else None)))
+    import soundfile as sf
+    data, rate = sf.read(sys.argv[1], dtype="float32")
+    print(json.dumps(align(data, rate, Path(sys.argv[2]).read_text(), sys.argv[3] if len(sys.argv) > 3 else None)))
 
 
 if __name__ == "__main__":
