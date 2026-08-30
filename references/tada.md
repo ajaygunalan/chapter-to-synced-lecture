@@ -1,6 +1,7 @@
 # TADA
 
-Hume's open-weights TADA-1B — https://github.com/HumeAI/tada — a 1B-parameter
+An alternative voice (`--engine tada`); the default is Chatterbox
+(`chatterbox.md`). Hume's open-weights TADA-1B — https://github.com/HumeAI/tada — a 1B-parameter
 Llama-3.2-based narrator: free, local, prosody from the sentence rather than a
 fixed frame rate, and it returns the frame count before every text token, so
 word timing comes from the model itself. Weights under the Llama 3.2 licence

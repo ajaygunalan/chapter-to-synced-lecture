@@ -136,4 +136,18 @@ slides").
 One module per voice engine in `scripts/engines/`, with the contract in
 `scripts/engines/__init__.py`; every engine writes the same
 `cues/*.align.json`. Which engine is used when is SKILL.md step 5;
-setup is `tada.md`, `kokoro.md` and `elevenlabs.md`.
+setup is `chatterbox.md`, `tada.md`, `kokoro.md` and `elevenlabs.md`.
+
+## Aligners
+
+An engine gets its word times one of two ways: from the model (TADA's
+frame counts, ElevenLabs' character timestamps, Kokoro's token durations)
+or, when the model returns only a waveform (Chatterbox), from a **forced
+aligner** — a small speech model that, given the audio and the words that
+were said, finds where each word starts. One module per aligner in
+`scripts/aligners/`, contract in `scripts/aligners/__init__.py`:
+`align(wav, text) -> [[char offset, seconds]]` per word, the same list an
+engine builds. It needs torch, so it runs inside the engine's worker
+process. An engine that has its own timing can be checked against one:
+`scripts/verify_timing.py` aligns any part's recording and reports the
+words whose time disagrees with the cues.

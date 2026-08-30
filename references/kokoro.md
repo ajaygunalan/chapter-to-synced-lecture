@@ -1,7 +1,8 @@
 # Kokoro
 
 The fallback voice (`--engine kokoro`): small, a minute a chapter, level.
-The default is TADA (`tada.md`). Open-weight, runs on the laptop, free,
+The default is Chatterbox (`chatterbox.md`); TADA (`tada.md`) is the other
+alternative. Open-weight, runs on the laptop, free,
 unlimited, and it returns the start time of every word, which is all the
 sync needs. Model:
 https://huggingface.co/hexgrad/Kokoro-82M (Apache 2.0). Library:

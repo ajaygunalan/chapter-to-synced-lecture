@@ -210,12 +210,22 @@ python3 scripts/lint.py script.md lecture.html --out <outdir> --headings extract
 python3 scripts/open.py lecture.html
 ```
 
-TADA on the GPU (`references/tada.md`): free, local, unlimited, a real
-narrator's prosody and word timing from the model itself — about a quarter
-of an hour for a chapter — this is how audio is made, every time. Kokoro
+Chatterbox on the GPU (`references/chatterbox.md`): Resemble's open 500M
+model, free, local, unlimited, the most natural of the local voices, with
+two knobs (`--exaggeration`, `--cfg`) — about half an hour for a chapter,
+because a forced aligner (`scripts/aligners/`) times every word after the
+model has spoken it — this is how audio is made, every time. TADA
+(`--engine tada`, `references/tada.md`) is the alternative narrator: word
+timing from the model itself, a quarter of an hour a chapter. Kokoro
 (`--engine kokoro`, `references/kokoro.md`) is the small fast fallback: a
 minute a chapter, flat. `open.py` prints the phase timings and opens the
 page. **That is the end of the run: the user listens.**
+
+Optional, when a part sounds wrong in the middle — a word skipped, a
+sentence swallowed: `python3 scripts/verify_timing.py <outdir> <part>` runs
+the aligner over the recording and prints every word whose time disagrees
+with the cues. One word off is noise; a run of them is where the voice
+slipped, and the part is re-recorded with `--part <key>`.
 
 What comes back from that listening is "Revising", below.
 
@@ -229,7 +239,7 @@ python3 scripts/build_audio.py script.md --out <outdir> --engine elevenlabs [--v
 Nothing is rebuilt but the audio — same script, same cues, same page — and a
 paid recording is never overwritten by a later free one (`build_audio.py
 --help`).
-Setup and voices: `references/elevenlabs.md`; with no key, stop and say so. If `build_audio.py --check` fails, `references/tada.md`.
+Setup and voices: `references/elevenlabs.md`; with no key, stop and say so. If `build_audio.py --check` fails, `references/chatterbox.md`.
 
 ## Revising
 
@@ -256,7 +266,8 @@ and re-recording a part they are still listening to.
 
 | what changed | command | cost |
 |---|---|---|
-| a part's words | `build_audio.py script.md --out <outdir>` | that part alone re-records, in seconds |
+| a part's words | `build_audio.py script.md --out <outdir>` | that part alone re-records, a minute or two |
+| a part sounds wrong somewhere | `verify_timing.py <outdir> <part>` | the aligner names the words the voice slipped on |
 | only marks, asks or slides | `build_audio.py … --recue` | no synthesis at all |
 | only the page | `build_page.py lecture.src.html -o lecture.html` | instant |
 
@@ -264,14 +275,16 @@ Each part is compared against `audio/<part>.txt`, the exact words it was
 given, so an unchanged part is never re-recorded and a changed one is never
 missed. `lint.py` after every edit.
 
-**Emphasis is written, not asked for.** TADA reads the sentence and
-leans where a reader would; Kokoro is level by design (`kokoro.md`).
-Neither follows a stage direction. Move the word to the front, put it in
-CAPITALS, end the sentence sooner, or leave a `<!-- pause 2s -->` in front
-of it.
+**Emphasis is written, not asked for.** Chatterbox and TADA read the
+sentence and lean where a reader would; Kokoro is level by design
+(`kokoro.md`). Chatterbox has two knobs for the whole run —
+`--exaggeration` for how much feeling, `--cfg` for pacing
+(`chatterbox.md`) — but no engine follows a stage direction on one word.
+Move the word to the front, put it in CAPITALS, end the sentence sooner,
+or leave a `<!-- pause 2s -->` in front of it.
 
-TADA records every revision. ElevenLabs only when the listener asks for it
-by name, and only once the words have stopped moving.
+Chatterbox records every revision. ElevenLabs only when the listener asks
+for it by name, and only once the words have stopped moving.
 
 ## Output
 
