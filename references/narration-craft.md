@@ -51,6 +51,57 @@ mispronounce gets a `pronounce:` entry in the header block.
 - Whatever the voice names, mark it (`mark`, below) — an edge, a line, a
   cell, a bullet — so it lights as it is said.
 
+## Connect the concept to the worked example
+
+Start each major concept in the book's teaching style: a familiar problem,
+story, thought experiment, or general explanation. Establish the need in
+plain language, then the conceptual solution, mechanism, and payoff before
+dense implementation. A concrete example can carry that explanation when
+its roles are clear; there is no universal abstract-only opening. Define
+the central idea plainly in the narration, matching its visible definition,
+before expecting the listener to interpret diagram labels. Connect the
+roles and relationships in that diagram through causal language.
+A definition alone does not explain why someone would want the capability.
+
+Then demonstrate the mechanism with the smallest toy the listener can follow.
+If the book's own example is already minimal, it can serve this role;
+otherwise use a labeled simplified or supplementary case before its fuller
+worked example. Say how the toy's roles map into the book's names and what
+the larger case adds. Keep names consistent within each example's code,
+diagram, and worked state. When a step matters, walk through it and connect
+the result back to the larger claim. Narration should explain the purpose
+and consequence of a line, graph change, or state update, not merely pronounce
+the syntax.
+
+Bridge to each implementation step at the listener's level. Use existing
+evidence to skip, refresh, or explain a prerequisite; if needed, a tiny
+isolated check belongs before the dependent topic (`quizzing.md`, "Brief
+prerequisite checks"). It should inform the explanation rather than become
+a multi-feature gotcha or an unsolicited live quiz during a build.
+Explain an unfamiliar symbol, type helper, or pattern by the job it does
+here before asking the listener to follow it in code. A spoken name in the
+glossary is pronunciation support, not an explanation. Do not jump from a
+definition into a full listing and expect tracing to supply the missing idea.
+
+Alternate levels of detail as the idea needs. An overview can introduce the
+relationship, a close walkthrough can establish the mechanism, and a return
+to the overview can explain the choice and cost. Learner-controlled segments
+belong at meaningful subgoal boundaries, not at arbitrary line counts. Avoid
+simultaneous unrelated motion while attention shifts between these views.
+
+End each section by saying its durable takeaway and the connection to the
+next section. Close the chapter by explaining how its solutions address the
+opening problem and when to choose among them. Keep the lesson meaningful
+after the listener forgets the values in the example.
+
+Use question pauses when a prediction or explanation would help the lesson,
+including why a choice helps or how it transfers to a changed requirement.
+They are optional; do not manufacture a wrong answer or an incorrect
+baseline to motivate a concept. Follow a question with an explanation of the
+mechanism and tradeoff. Do not restart skills already demonstrated in the
+listener's diagnostic notes; introduce an unfamiliar supporting facility by
+its local purpose just before using it.
+
 Narration contains no maths and no code; anything symbolic goes through the
 glossary or a spoken form. The linter rejects `$` and maths glyphs in prose.
 
@@ -115,17 +166,22 @@ it.
 
 ## part: alpha
 
-<!-- beat: alpha-trouble | frame 0 -->
-Say you have to do this by hand, a hundred times over…
-<!-- pause 2s --> …and that guess is three too many.
+<!-- beat: alpha-need | frame 0 -->
+A choice can restrict what remains possible. We need a reason to choose now
+without losing the result we are trying to reach.
 
-<!-- beat: alpha-scan | frame 1 -->
+<!-- beat: alpha-idea | frame 1 -->
+A safe choice preserves a way to reach the best result. Once we establish
+that property, we can commit to the choice and solve the remaining problem.
+
+<!-- beat: alpha-scan | frame 2 -->
+Here is the book's small case. These values let us test that condition.
 Three of them are in reach: <!-- mark: item-a -->the first, at five,
 <!-- mark: item-b -->the second, at seven, <!-- mark: item-c -->the third,
 at twelve. Which one do I take?
 <!-- ask -->
 
-<!-- beat: alpha-take | frame 2 -->
+<!-- beat: alpha-take | frame 3 -->
 If you reached for the one at two, over on the far side — that's the trap:
 it isn't in reach yet. <!-- mark: item-a -->The first, at five. Here is why
 that is safe…

@@ -210,6 +210,8 @@ function createSyncedPlayer(o) {
   function openAsk(q) {
     askOpen = q;
     audio.pause();
+    audio.currentTime = q.t;
+    sync(Math.max(0, q.t - 0.001)); // Hold the question frame until Answer.
     caption.classList.add('is-ask');
     caption.innerHTML = '';
     var qt = document.createElement('span'); qt.className = 'ask-text'; qt.textContent = q.prompt || '';
@@ -263,7 +265,14 @@ function createSyncedPlayer(o) {
     if (askOpen) { closeAsk(); audio.play(); return; }   // Play after a question brings the answer
     audio.paused ? audio.play() : audio.pause();
   }
-  function tick() { var t = audio.currentTime; sync(t); checkAsks(t); rafId = requestAnimationFrame(tick); }
+  function tick() {
+    rafId = null;
+    var t = audio.currentTime;
+    checkAsks(t);
+    if (askOpen) return;
+    sync(t);
+    if (!audio.paused) rafId = requestAnimationFrame(tick);
+  }
 
   if (audio) {
     audio.addEventListener('play', function () { play.textContent = '❚❚ Pause'; if (!rafId) rafId = requestAnimationFrame(tick); });

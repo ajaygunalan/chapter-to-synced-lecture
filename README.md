@@ -33,6 +33,11 @@ optional, if you want a paid voice for a final take.
 
 ## Then you revise it with the same command
 
+In the reference vault, each book has one shared
+`<book-dir>/lectures/<chapter-slug>/` directory layout, even when its PDFs live in
+individual chapter folders. Each lecture's page, audio, cues, and source stay
+together. See [output location](SKILL.md#output-location--resolve-before-creating-files).
+
 Point it at the same PDF and it finds the lecture already there, reads it, and
 gets ready to teach. Go through a tab, say what lost you, and it explains that
 bit in the chat first — then edits the script or the slide once you're happy,
