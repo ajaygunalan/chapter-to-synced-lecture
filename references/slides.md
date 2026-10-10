@@ -84,8 +84,8 @@ the relationship to the step that realizes it and back to the resulting
 lesson. Neither an abstract overview alone nor an unexplained execution trace
 is sufficient.
 
-For [D2](https://d2lang.com/) diagrams, read the shared `d2-diagram` skill
-(`~/.agents/skills/d2-diagram/SKILL.md`, also discoverable from the other
+For [D2](https://d2lang.com/) diagrams, read the shared `code-diagrams` skill
+(`~/.agents/skills/code-diagrams/SKILL.md`, also discoverable from the other
 assistant's skill directory). Save actual source and rendered output beside
 the lecture as `<outdir>/d2/<concept>.d2` and `<outdir>/d2/<concept>.svg`.
 Render the source, inspect the resulting image for readability, and integrate
