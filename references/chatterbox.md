@@ -1,6 +1,7 @@
 # Chatterbox
 
-The default voice. Resemble AI's open Chatterbox — https://github.com/resemble-ai/chatterbox —
+The expressive alternative (`--engine chatterbox`; the default is Kokoro,
+`kokoro.md`). Resemble AI's open Chatterbox — https://github.com/resemble-ai/chatterbox —
 the original 500M-parameter English model (MIT; weights at
 https://huggingface.co/ResembleAI/chatterbox, nothing to sign): a Llama-style
 token model over a speech codec, with two knobs no other local voice has —

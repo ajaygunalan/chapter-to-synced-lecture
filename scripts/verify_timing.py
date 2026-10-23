@@ -15,8 +15,8 @@ word the voice skipped, repeated or mangled, from that point on. Exit
 status 1 when any word is over.
 
 For a Chatterbox part this re-derives the engine's own timing, so a clean
-result checks the aligner, not the voice; for TADA and ElevenLabs it is an
-independent second opinion. Needs torch, so it runs itself under
+result checks the aligner, not the voice; for Kokoro, TADA and ElevenLabs it
+is an independent second opinion (verify_words.py checks the words). Needs torch, so it runs itself under
 aligners.PYTHON (the Chatterbox virtualenv; ALIGNER_PYTHON overrides).
 """
 
@@ -29,7 +29,7 @@ import tempfile
 from pathlib import Path
 
 import aligners
-from lecture_format import SEP, align_path, audio_path, ffmpeg, text_path
+from lecture_format import BREAK_RE, SEP, align_path, audio_path, ffmpeg, text_path
 from subtitles import words_with_offsets
 
 
@@ -68,8 +68,9 @@ def main():
 
     n_paras = text.count(SEP) + 1
     deltas, over, run, best_run = [], [], 0, 0
+    tags = [(m.start(), m.end()) for m in BREAK_RE.finditer(text)]
     for (off, word), (_, t_cue), (_, t_found) in zip(words, cued, found):
-        if not aligner.normalise(word):
+        if not aligner.normalise(word) or any(a <= off < b for a, b in tags):
             continue
         d = t_found - t_cue
         deltas.append(abs(d))

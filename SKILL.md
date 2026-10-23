@@ -301,14 +301,16 @@ python3 scripts/lint.py script.md lecture.html --out <outdir> --headings extract
 python3 scripts/open.py lecture.html
 ```
 
-Chatterbox on the GPU (`references/chatterbox.md`): Resemble's open 500M
-model, free, local, unlimited, the most natural of the local voices —
-about half an hour for a chapter — this is how audio is made, every time.
-TADA (`--engine tada`, `references/tada.md`) is the alternative narrator: a
-quarter of an hour a chapter. Kokoro (`--engine kokoro`,
-`references/kokoro.md`) is the small fast fallback: a minute a chapter,
-flat. `open.py` prints the phase timings and opens the page. **That is the
-end of the run: the user listens.**
+Kokoro on the GPU (`references/kokoro.md`): the 82M open model, free,
+local, unlimited, a minute or two for a chapter, word timing from the model
+itself, a lexicon for names — this is how audio is made, every time
+(`--voice` picks one of its named voices; `michael` unless told otherwise).
+Then `scripts/verify_words.py <outdir>`: Whisper listens to every part and
+names any word the voice did not say. Chatterbox (`--engine chatterbox`,
+`references/chatterbox.md`) is the expressive alternative, about half an
+hour a chapter; TADA (`--engine tada`, `references/tada.md`) the other.
+`open.py` prints the phase timings and opens the page. **That is the end of
+the run: the user listens.**
 
 What comes back from that listening is "Revising", below.
 
@@ -322,7 +324,7 @@ python3 scripts/build_audio.py script.md --out <outdir> --engine elevenlabs [--v
 Nothing is rebuilt but the audio — same script, same cues, same page — and a
 paid recording is never overwritten by a later free one (`build_audio.py
 --help`).
-Setup and voices: `references/elevenlabs.md`; with no key, stop and say so. If `build_audio.py --check` fails, `references/chatterbox.md`.
+Setup and voices: `references/elevenlabs.md`; with no key, stop and say so. If `build_audio.py --check` fails, `references/kokoro.md`.
 
 ## Revising
 
@@ -375,13 +377,14 @@ Each part is compared against `audio/<part>.txt`, the exact words it was
 given, so an unchanged part is never re-recorded and a changed one is never
 missed. `lint.py` after every edit.
 
-**Emphasis is written, not asked for.** Chatterbox and TADA read the
-sentence and lean where a reader would; Kokoro is level by design
-(`kokoro.md`). No engine follows a stage direction on one word (Chatterbox's
+**Emphasis is written, not asked for.** Kokoro reads level by design
+(`kokoro.md`): punctuation is its only lean, so a pause is a full stop or
+an ellipsis. Chatterbox and TADA read the sentence and lean where a reader
+would. No engine follows a stage direction on one word (Chatterbox's
 knobs set the whole run). Move the word to the front, put it in CAPITALS,
 end the sentence sooner, or leave a `<!-- pause 2s -->` in front of it.
 
-Chatterbox records every revision. ElevenLabs only when the listener asks
+Kokoro records every revision. ElevenLabs only when the listener asks
 for it by name, and only once the words have stopped moving.
 
 ## Output

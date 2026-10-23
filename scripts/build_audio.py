@@ -5,17 +5,17 @@ script.md -> <out>/audio/<part>.mp3 + <out>/cues/<part>.json + <out>/cues/cues.j
 One audio file per part, and a cue for every beat, mark and ask, timed from
 the engine's per-word alignment (engines: scripts/engines/).
 
-    build_audio.py script.md --out DIR                          # chatterbox (default)
-    build_audio.py script.md --out DIR --engine tada            # the alternative narrator, timing from the model
-    build_audio.py script.md --out DIR --engine kokoro          # the small fast fallback
+    build_audio.py script.md --out DIR                          # kokoro (default), timing from the model
+    build_audio.py script.md --out DIR --engine chatterbox      # the expressive alternative, timing from an aligner
+    build_audio.py script.md --out DIR --engine tada            # the other alternative narrator
     build_audio.py script.md --out DIR --engine elevenlabs
     build_audio.py script.md --out DIR --recue                  # re-time cues from the existing recording; no synthesis
     build_audio.py --check [--engine E]                         # what the engine can do right now
     --voice NAME|ID  --part KEY  --force  ; --engine E --help lists E's own options
 
-A part is re-recorded when its words have changed and skipped when they
-have not, so an interruption resumes with the same command and so does an
-edit; --force (or --part) rebuilds regardless. A part recorded by an engine
+A part is re-recorded when its words, its engine or its voice have changed
+and skipped when they have not, so an interruption resumes with the same
+command and so does an edit; --force (or --part) rebuilds regardless. A part recorded by an engine
 marked FINAL (a paid voice) is never replaced automatically — not by
 another engine, and not by an edit; it says so and leaves it alone.
 Script format:
@@ -164,6 +164,8 @@ def main():
 
     header, parts = parse_parts(args.script.read_text())
     rules = parse_pronounce(header)
+    if hasattr(engine, "adapt_rules"):
+        rules = engine.adapt_rules(rules, args)
     all_keys = list(parts)
     if args.part:
         if args.part not in parts:
@@ -202,17 +204,22 @@ def main():
             ok = False
             continue
         if recorded and not rebuild:
-            old = json.loads(cf.read_text()).get("engine", engines.LEGACY)
+            was = json.loads(cf.read_text())
+            old, old_voice = was.get("engine", engines.LEGACY), was.get("voice")
             stale = text != tf.read_text()                      # the words moved on since it was recorded
             if stale and engines.load(old).FINAL:
                 warn(f"the words changed since the {old} recording, which is not replaced automatically — "
                      f"re-record it with --part {key} to replace it")
                 ok = False
                 continue
-            if not stale and (old == args.engine or engines.load(old).FINAL):
+            if not stale and engines.load(old).FINAL:
                 print(f"    already built by {old}; skipping (--force to redo)")
                 continue
-            print(f"    {'the words changed' if stale else f'built by {old}'}; recording with {args.engine}")
+            if not stale and old == args.engine and old_voice in (None, args.voice):
+                print(f"    already built by {old} ({old_voice}); skipping (--force to redo)")
+                continue
+            why = "the words changed" if stale else f"built by {old} ({old_voice})"
+            print(f"    {why}; recording with {args.engine} ({args.voice})")
 
         tmp = Path(tempfile.mkdtemp(prefix=f"tts-{key}-"))
         try:
@@ -238,12 +245,12 @@ def main():
         print(f"  ! {p}", file=sys.stderr)
     n = write_cues_js(args.out, all_keys)
     missing = [k for k in all_keys if not audio_path(args.out, k).exists()]
-    print(f"cues/cues.js: {n} part(s); missing audio: {missing or 'none'}; engine {args.engine}"
+    print(f"cues/cues.js: {n} part(s); missing audio: {missing or 'none'}; engine {args.engine}, voice {args.voice}"
           + (f"; spent {spent:,} credits this run" if spent else ""))
     if not args.recue:
         print(f"total: {total_chars:,} chars, ~{total_chars / CHARS_PER_MIN:.0f} min of audio")
     if not args.recue:
-        stamp(args.out, "record", f"{n} part(s), {total_chars / CHARS_PER_MIN:.0f} min of audio, {args.engine}"
+        stamp(args.out, "record", f"{n} part(s), {total_chars / CHARS_PER_MIN:.0f} min of audio, {args.engine} {args.voice}"
                                   + (f", {spent:,} credits" if spent else ""))
     sys.exit(0 if ok else 1)
 

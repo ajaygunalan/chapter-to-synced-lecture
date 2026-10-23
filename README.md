@@ -9,14 +9,15 @@ but it plays like one, and you can pause, scrub, jump to any slide, or read the
 transcript.
 
 **No API key needed.** The voice runs on your own machine with
+[Kokoro](https://huggingface.co/hexgrad/Kokoro-82M), the 82M open model
+(Apache 2.0): free, unlimited, deterministic, a set of named voices, word
+timing straight from the model, a lexicon for names — a few minutes of GPU
+time for an hour of narration, and Whisper checks every word it said.
 [Chatterbox](https://github.com/resemble-ai/chatterbox), Resemble AI's open
-500M model (MIT): free, unlimited, a natural reader with an emotion knob and a
-pacing knob — about half an hour of GPU time for an hour of narration on a
-laptop card. [TADA-1B](https://github.com/HumeAI/tada), Hume's open-weights narrator, is
-the alternative — word timing straight from the model, a quarter of an hour
-per hour of narration. [Kokoro](https://huggingface.co/hexgrad/Kokoro-82M)
-is the small fast fallback (a minute an hour, flatter). ElevenLabs is
-optional, if you want a paid voice for a final take.
+500M model (MIT), is the expressive alternative, with an emotion knob and a
+pacing knob — about half an hour of GPU time per hour of narration;
+[TADA-1B](https://github.com/HumeAI/tada), Hume's open-weights narrator, the
+other. ElevenLabs is optional, if you want a paid voice for a final take.
 
 ## What you get
 
@@ -64,11 +65,11 @@ economics, whatever the chapter happens to be.
 
 - Claude Code
 - `poppler-utils`, `ffmpeg`, `chromium`
-- Chatterbox in a virtualenv — [`references/chatterbox.md`](references/chatterbox.md):
-  an NVIDIA GPU with 8 GB; nothing to sign, the weights are open.
-- Optional alternatives: TADA — [`references/tada.md`](references/tada.md)
-  (a one-time click on Meta's Llama 3.2 licence for its tokenizer); Kokoro —
-  [`references/kokoro.md`](references/kokoro.md), a CPU still beats real time.
+- Kokoro in a virtualenv — [`references/kokoro.md`](references/kokoro.md):
+  a GPU is nice, a CPU still beats real time; nothing to sign.
+- Optional alternatives: Chatterbox — [`references/chatterbox.md`](references/chatterbox.md)
+  (an NVIDIA GPU with 8 GB); TADA — [`references/tada.md`](references/tada.md)
+  (a one-time click on Meta's Llama 3.2 licence for its tokenizer).
 - Optional: an ElevenLabs key for the paid voice
   ([`references/elevenlabs.md`](references/elevenlabs.md))
 

@@ -8,6 +8,9 @@ build_audio.py never names one:
     DEFAULT              a key of VOICES
     add_args(parser)     the engine's own options, in one argument group
     check(args)          print what the engine can do right now (device, account)
+    adapt_rules(rules, args)   optional: the script's pronounce rules as this engine wants them
+                         (an engine with a lexicon of its own drops the respellings of words it
+                         already knows and may rewrite the rest); default: unchanged
     synth(paragraphs, args, tmp)
                          -> (mp3 path, align, duration, cost, model)
                             align: [[char offset, seconds]] per word of SEP.join(paragraphs)
@@ -32,7 +35,7 @@ from lecture_format import ffmpeg, para_offsets
 from subtitles import align_from_char_starts
 
 ENGINES = ("chatterbox", "tada", "kokoro", "elevenlabs")
-DEFAULT = "chatterbox"
+DEFAULT = "kokoro"
 LEGACY = "elevenlabs"        # what recorded the cues written before they carried an "engine" key
 
 

@@ -2,9 +2,15 @@
 """
 The half of the Kokoro engine (engines/kokoro.py) that runs inside the
 Kokoro virtualenv (references/kokoro.md); protocol in worker.py. Job:
-{"voice": "af_sky", "speed": 1.0, "paragraphs", "wav"}. It lives in scripts/
-so that lecture_format and subtitles import normally and nothing shadows the
-kokoro package.
+{"voice": "am_michael", "speed": 1.0, "lexicon": {word: IPA}, "paragraphs", "wav"}.
+It lives in scripts/ so that lecture_format and subtitles import normally
+and nothing shadows the kokoro package.
+
+Word timing comes from the model: every token the pipeline returns carries
+start_ts/end_ts on its piece's clock (its predicted durations), so the
+whitespace word holding the token is stamped with that start. The lexicon
+goes into misaki's gold dictionary (lower-cased keys), the same thing an
+inline [word](/ipa/) does, for both the American and the British front end.
 """
 
 import sys
@@ -30,7 +36,10 @@ class Track(worker.Track):
                 at = piece.find(tok.text, cursor)
                 if at < 0:
                     continue
-                for k in range(at, at + len(tok.text)):
+                lo = at
+                while lo > 0 and not piece[lo - 1].isspace():     # the whole whitespace word ([word](/ipa/), "Qt,")
+                    lo -= 1
+                for k in range(lo, at + len(tok.text)):
                     if self.starts[base + k] is None:
                         self.starts[base + k] = round(self.t + float(tok.start_ts), 3)
                 cursor = at + len(tok.text)
@@ -42,6 +51,8 @@ def synthesise(job, pipes, device):
     lang = "b" if job["voice"].startswith("b") else "a"
     if lang not in pipes:
         pipes[lang] = KPipeline(lang_code=lang, repo_id="hexgrad/Kokoro-82M", device=device)
+    for word, ipa in (job.get("lexicon") or {}).items():
+        pipes[lang].g2p.lexicon.golds[word.lower()] = ipa
     return Track(pipes[lang], job["voice"], float(job.get("speed", 1.0))).render(job["paragraphs"], job["wav"])
 
 

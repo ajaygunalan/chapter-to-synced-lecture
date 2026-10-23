@@ -208,4 +208,8 @@ that is safe…
   chapter-title line, to a part or `skip: <reason>`; invent ids for
   unnumbered sections (`19.2`, `6.notes`) and use the same ids in both.
 - `pronounce:` respellings are substituted before synthesis, for every
-  engine; subtitles keep the real spelling.
+  engine; subtitles keep the real spelling. Kokoro reads a run of capitals
+  as letters, so it lower-cases a respelling's stressed syllables itself
+  (`IGG-el-bear-ger` → `igg-el-bear-ger`; `S-R-P` stays letters) and, for a
+  word in its lexicon (`references/kokoro-lexicon.json`, IPA), ignores the
+  respelling: the IPA is the better fix (`kokoro.md`).
